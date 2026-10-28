@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>자리바꾸기</title>
+<meta name="theme-color" content="#5B7CFA" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="자리바꾸기" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -153,6 +157,18 @@ input, select, textarea { font-family: var(--font-body); }
 }
 .icon-btn:hover { background: rgba(255,255,255,0.95); color: var(--ink); transform: scale(1.05); }
 .icon-btn.muted { background: rgba(242,92,92,0.18); color: #C03838; }
+.sync-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px; border-radius: 999px;
+  font-size: 12px; background: rgba(255,255,255,0.68);
+  border: 1px solid var(--glass-border); color: var(--ink-soft);
+  cursor: pointer; white-space: nowrap;
+}
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #aaa; display: inline-block; }
+.sync-dot.online { background: #3EB886; box-shadow: 0 0 6px rgba(62,184,134,0.6); }
+.sync-dot.syncing { background: #5B7CFA; animation: pulse-dot 1s infinite; }
+.sync-dot.error { background: #F25C5C; }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.25); } }
 
 .check-pill {
   display:inline-flex; align-items:center; gap:6px;
@@ -629,6 +645,13 @@ input, select, textarea { font-family: var(--font-body); }
     <p id="class-sub">학년/반을 설정해주세요</p>
   </div>
   <div class="topbar-right">
+    <button id="btn-pwa-install" class="pill-btn small accent-3" type="button" title="앱으로 설치하기">
+      <i data-lucide="download"></i> <span id="pwa-install-label">앱 설치</span>
+    </button>
+    <button id="btn-sync-badge" class="sync-badge" type="button" title="서버 동기화 상태 (클릭하여 설정)">
+      <span id="sync-dot" class="sync-dot"></span>
+      <span id="sync-status-text">로컬 저장</span>
+    </button>
     <label class="check-pill">
       <input type="checkbox" id="chk-boy-mark" />
       <span>남학생 색상표시</span>
@@ -777,7 +800,34 @@ input, select, textarea { font-family: var(--font-body); }
       </section>
 
       <section class="settings-section">
-        <h3><i data-lucide="database"></i> 데이터 백업</h3>
+        <h3><i data-lucide="cloud"></i> 서버 저장 및 클라우드 동기화</h3>
+        <div class="form-row">
+          <label style="flex:2 1 220px;">서버 API 주소 (비워두면 현재 호스트 <code>/api/sync</code> 사용)
+            <input type="text" id="input-server-url" placeholder="예: https://my-school-server.com/api/sync 또는 /api/sync" />
+          </label>
+          <label style="flex:1 1 130px;">학급 동기화 코드 (방 번호)
+            <input type="text" id="input-sync-room" placeholder="예: 2026-5-2" />
+          </label>
+          <label style="flex:1 1 120px;">보안 키 / 비밀번호 (선택)
+            <input type="password" id="input-sync-token" placeholder="선택 입력" />
+          </label>
+        </div>
+        <div class="form-row wrap" style="margin-top: 10px; justify-content: space-between;">
+          <label class="check-row" style="flex:0 0 auto; gap:8px;">
+            <span>기록 저장 시 서버에 자동 업로드</span>
+            <input type="checkbox" id="chk-auto-sync" />
+          </label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="btn-server-test" class="pill-btn small" type="button"><i data-lucide="wifi"></i> 연결 확인</button>
+            <button id="btn-server-push" class="pill-btn accent small" type="button"><i data-lucide="cloud-upload"></i> 지금 서버에 저장</button>
+            <button id="btn-server-pull" class="pill-btn accent-3 small" type="button"><i data-lucide="cloud-download"></i> 서버에서 불러오기</button>
+          </div>
+        </div>
+        <p class="hint" id="server-sync-last-info">서버 주소를 설정하거나 함께 제공된 Node.js/Python 서버(<code>server.js</code>)로 실행하면 학급 명단과 배치 기록이 서버 DB에 영구 보관됩니다.</p>
+      </section>
+
+      <section class="settings-section">
+        <h3><i data-lucide="database"></i> 데이터 백업 (파일)</h3>
         <div class="form-row wrap">
           <button id="btn-export-data" class="pill-btn small" type="button"><i data-lucide="upload"></i> 전체 데이터 내보내기</button>
           <label class="file-pill small">
@@ -910,10 +960,14 @@ input, select, textarea { font-family: var(--font-body); }
       <button class="icon-btn close-modal" data-close="modal-history" type="button"><i data-lucide="x"></i></button>
     </header>
     <div class="modal-body">
-      <div class="form-row">
-        <label>월 선택
+      <div class="form-row wrap" style="justify-content:space-between; align-items:flex-end;">
+        <label style="max-width:200px;">월 선택
           <select id="filter-month"><option value="all">전체</option></select>
         </label>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="btn-history-cloud-push" class="pill-btn accent small" type="button"><i data-lucide="cloud-upload"></i> 서버에 기록 백업</button>
+          <button id="btn-history-cloud-pull" class="pill-btn accent-3 small" type="button"><i data-lucide="cloud-download"></i> 서버 기록 가져오기</button>
+        </div>
       </div>
       <ul id="history-list" class="history-list" style="margin-top:12px;"></ul>
       <h3 style="margin:24px 0 10px; display:flex; align-items:center; gap:6px;"><i data-lucide="history"></i> 자리 교환 사유 기록</h3>
@@ -956,6 +1010,35 @@ input, select, textarea { font-family: var(--font-body); }
     <footer class="modal-foot" style="justify-content:flex-end;">
       <button id="btn-confirm-cancel" class="pill-btn" type="button">취소</button>
       <button id="btn-confirm-ok" class="pill-btn accent" type="button">확인</button>
+    </footer>
+  </div>
+</div>
+
+<!-- PWA Install Guide Modal -->
+<div id="modal-pwa-guide" class="modal-overlay" hidden>
+  <div class="modal glass small">
+    <header class="modal-head">
+      <h2><i data-lucide="smartphone"></i> 앱으로 설치하기 (PWA)</h2>
+      <button class="icon-btn close-modal" data-close="modal-pwa-guide" type="button"><i data-lucide="x"></i></button>
+    </header>
+    <div class="modal-body" style="font-size:14px; line-height:1.6;">
+      <p style="margin-top:0;">이 웹앱은 <b>PWA(Progressive Web App)</b> 규격이 적용되어 있어 PC나 스마트폰·태블릿 홈 화면에 앱처럼 설치하고 오프라인에서도 사용할 수 있습니다.</p>
+      <div style="background:rgba(255,255,255,0.65); padding:12px 14px; border-radius:12px; margin-bottom:10px;">
+        <b>💻 PC (Chrome / Edge / Whale)</b><br>
+        주소창 오른쪽 끝의 <b>[앱 설치 ⊕]</b> 아이콘을 누르거나 브라우저 메뉴(⋮) → <b>[앱 설치 / 페이지 설치]</b>를 클릭하세요.
+      </div>
+      <div style="background:rgba(255,255,255,0.65); padding:12px 14px; border-radius:12px; margin-bottom:10px;">
+        <b>🍎 iPhone / iPad (Safari)</b><br>
+        하단(또는 상단) <b>[공유하기 📤]</b> 버튼을 누른 뒤 <b>[홈 화면에 추가]</b>를 선택하세요.
+      </div>
+      <div style="background:rgba(255,255,255,0.65); padding:12px 14px; border-radius:12px;">
+        <b>🤖 Android (Chrome / 삼성 인터넷)</b><br>
+        우측 메뉴(⋮)에서 <b>[앱 설치]</b> 또는 <b>[홈 화면에 추가]</b>를 선택하세요.
+      </div>
+      <p class="hint" style="margin-bottom:0;">※ 브라우저 미리보기(iframe) 내부가 아닌 독립된 탭(또는 패키지의 서버 실행 주소)에서 열면 원클릭 설치창이 바로 뜹니다.</p>
+    </div>
+    <footer class="modal-foot">
+      <button class="pill-btn accent close-modal" data-close="modal-pwa-guide" type="button">확인</button>
     </footer>
   </div>
 </div>
@@ -1268,6 +1351,7 @@ const App = (() => {
     freeEditMode: false, currentSeating: null,
     showBoyMark: false, showEmptySeats: false, showNumber: false, showPhoto: false, requireSwapReason: true,
     soundEnabled: true,
+    serverConfig: { url: "", roomKey: "default-class", authToken: "", autoSync: true, lastSyncedAt: null },
   };
   const deskDraft = { mode: "grid", sections: 3, rows: 5, seatsPerDesk: 2 };
 
@@ -1287,6 +1371,7 @@ const App = (() => {
       deskLayout: state.deskLayout, showBoyMark: state.showBoyMark, showEmptySeats: state.showEmptySeats,
       showNumber: state.showNumber, showPhoto: state.showPhoto, requireSwapReason: state.requireSwapReason,
       soundEnabled: state.soundEnabled,
+      serverConfig: state.serverConfig,
     });
   }
 
@@ -1398,6 +1483,15 @@ const App = (() => {
       state.showNumber = !!meta.showNumber; state.showPhoto = !!meta.showPhoto;
       state.requireSwapReason = meta.requireSwapReason !== false;
       state.soundEnabled = meta.soundEnabled !== false;
+      if (meta.serverConfig) {
+        state.serverConfig = {
+          url: meta.serverConfig.url || "",
+          roomKey: meta.serverConfig.roomKey || "default-class",
+          authToken: meta.serverConfig.authToken || "",
+          autoSync: meta.serverConfig.autoSync !== false,
+          lastSyncedAt: meta.serverConfig.lastSyncedAt || null
+        };
+      }
     }
     SoundFX.setEnabled(state.soundEnabled);
 
@@ -1456,6 +1550,11 @@ const App = (() => {
       document.getElementById("input-grade").value = state.grade || "";
       document.getElementById("input-class").value = state.classNum || "";
       document.getElementById("input-teacher").value = state.teacher || "";
+      document.getElementById("input-server-url").value = state.serverConfig.url || "";
+      document.getElementById("input-sync-room").value = state.serverConfig.roomKey || classKeyOf(state.grade, state.classNum);
+      document.getElementById("input-sync-token").value = state.serverConfig.authToken || "";
+      document.getElementById("chk-auto-sync").checked = state.serverConfig.autoSync !== false;
+      ServerSync.updateStatusUI();
       Students.renderList(); openModal("modal-settings");
     });
     document.getElementById("btn-empty-settings").addEventListener("click", () => document.getElementById("btn-open-settings").click());
@@ -1495,10 +1594,15 @@ const App = (() => {
       state.grade = document.getElementById("input-grade").value.trim();
       state.classNum = document.getElementById("input-class").value.trim();
       state.teacher = document.getElementById("input-teacher").value.trim();
+      ServerSync.readConfigFromInputs();
       await persistMeta(); await persistAllStudents();
+      ServerSync.updateStatusUI();
       updateHeader(); Seating.renderCurrentAssignments();
       closeModal("modal-settings");
       UI.toast("설정이 저장되었습니다.", "success");
+      if (state.serverConfig.autoSync && state.serverConfig.url) {
+        ServerSync.pushToServer(true);
+      }
     });
 
     document.getElementById("btn-shuffle").addEventListener("click", () => { closeDock(); Seating.shuffleAssign(); });
@@ -2061,6 +2165,9 @@ const History = (() => {
       studentsSnapshot: JSON.parse(JSON.stringify(App.state.students)),
     });
     UI.toast(`${yearMonth} 기준 자리 배치를 기록에 저장했어요!`, "success");
+    if (App.state.serverConfig && App.state.serverConfig.autoSync) {
+      ServerSync.pushToServer(true);
+    }
   }
 
   function buildPreviewHTML(record) {
@@ -2160,6 +2267,9 @@ const History = (() => {
       id: uuid(), classKey: classKeyOf(App.state.grade, App.state.classNum), createdAt: Date.now(),
       seatIdA, seatIdB, nameA: studentA ? studentA.name : "빈자리", nameB: studentB ? studentB.name : "빈자리", reason: (reason || "").trim()
     });
+    if (App.state.serverConfig && App.state.serverConfig.autoSync) {
+      ServerSync.pushToServer(true);
+    }
   }
 
   async function renderSwapLogList() {
@@ -2471,9 +2581,359 @@ const Print = (() => {
   };
 })();
 
+/* ================= ServerSync (REST API & Cloud Storage Sync) ================= */
+const ServerSync = (() => {
+  let syncStatus = "local"; // "local" | "online" | "syncing" | "error"
+
+  function resolveEndpoint() {
+    const cfg = App.state.serverConfig || {};
+    let base = (cfg.url || "").trim();
+    if (!base) {
+      if (location.protocol === "http:" || location.protocol === "https:") {
+        base = `${location.origin}/api/sync`;
+      } else {
+        return null;
+      }
+    }
+    const room = encodeURIComponent((cfg.roomKey || classKeyOf(App.state.grade, App.state.classNum) || "default").trim());
+    if (base.includes("?")) return `${base}&room=${room}`;
+    return `${base.replace(/\/+$/, "")}/${room}`;
+  }
+
+  function buildHeaders() {
+    const headers = { "Content-Type": "application/json" };
+    const token = (App.state.serverConfig?.authToken || "").trim();
+    if (token) {
+      headers["Authorization"] = token.startsWith("Bearer ") ? token : `Bearer ${token}`;
+      headers["X-API-Key"] = token;
+    }
+    return headers;
+  }
+
+  function readConfigFromInputs() {
+    const urlEl = document.getElementById("input-server-url");
+    const roomEl = document.getElementById("input-sync-room");
+    const tokenEl = document.getElementById("input-sync-token");
+    const autoEl = document.getElementById("chk-auto-sync");
+    if (!urlEl) return;
+    App.state.serverConfig = {
+      ...App.state.serverConfig,
+      url: urlEl.value.trim(),
+      roomKey: roomEl.value.trim() || classKeyOf(App.state.grade, App.state.classNum) || "default-class",
+      authToken: tokenEl.value.trim(),
+      autoSync: !!autoEl.checked,
+    };
+  }
+
+  function updateStatusUI(customState) {
+    if (customState) syncStatus = customState;
+    const dot = document.getElementById("sync-dot");
+    const text = document.getElementById("sync-status-text");
+    const info = document.getElementById("server-sync-last-info");
+    const cfg = App.state.serverConfig || {};
+
+    if (dot && text) {
+      dot.className = "sync-dot";
+      if (syncStatus === "syncing") {
+        dot.classList.add("syncing");
+        text.textContent = "서버 동기화 중...";
+      } else if (syncStatus === "online") {
+        dot.classList.add("online");
+        text.textContent = `서버 연결됨 (${cfg.roomKey || "기본"})`;
+      } else if (syncStatus === "error") {
+        dot.classList.add("error");
+        text.textContent = "서버 오프라인 (로컬 보관)";
+      } else {
+        text.textContent = cfg.url ? `서버 대기 (${cfg.roomKey || "기본"})` : "로컬 저장";
+      }
+    }
+    if (info && cfg.lastSyncedAt) {
+      info.innerHTML = `마지막 서버 동기화: <b>${formatDateTime(cfg.lastSyncedAt)}</b> · 방 코드: <b>${escapeHTML(cfg.roomKey)}</b>`;
+    }
+  }
+
+  async function buildFullPayload() {
+    const [meta, students, history, swapLogs, currentSeating] = await Promise.all([
+      DB.get("meta", "settings"), DB.getAll("students"), DB.getAll("history"), DB.getAll("swapLogs"), DB.get("currentSeating", "current")
+    ]);
+    return {
+      version: 2,
+      roomKey: App.state.serverConfig.roomKey || classKeyOf(App.state.grade, App.state.classNum),
+      updatedAt: Date.now(),
+      meta, students, history, swapLogs, currentSeating
+    };
+  }
+
+  async function testConnection() {
+    readConfigFromInputs();
+    await App.persistMeta();
+    const endpoint = resolveEndpoint();
+    if (!endpoint) {
+      UI.toast("서버 API 주소를 입력해주세요.", "warn");
+      return;
+    }
+    updateStatusUI("syncing");
+    try {
+      const res = await fetch(endpoint, { method: "GET", headers: buildHeaders() });
+      if (res.ok || res.status === 404) {
+        updateStatusUI("online");
+        UI.toast("서버와 정상적으로 연결되었어요! ☁️", "success");
+      } else {
+        throw new Error(`HTTP ${res.status}`);
+      }
+    } catch (err) {
+      updateStatusUI("error");
+      UI.toast("서버에 연결할 수 없어요. 서버 실행 여부나 주소를 확인해주세요.", "warn");
+    }
+  }
+
+  async function pushToServer(silent = false) {
+    if (!silent) {
+      readConfigFromInputs();
+      await App.persistMeta();
+    }
+    const endpoint = resolveEndpoint();
+    if (!endpoint) {
+      if (!silent) UI.toast("설정에서 서버 주소를 먼저 입력해주세요.", "warn");
+      return false;
+    }
+    updateStatusUI("syncing");
+    try {
+      const payload = await buildFullPayload();
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: buildHeaders(),
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      App.state.serverConfig.lastSyncedAt = Date.now();
+      await App.persistMeta();
+      updateStatusUI("online");
+      if (!silent) UI.toast("학급 명단과 배치 기록을 서버에 저장했어요! ☁️", "success");
+      return true;
+    } catch (err) {
+      updateStatusUI("error");
+      if (!silent) UI.toast("서버 저장 실패: 로컬 기기에는 안전하게 저장되어 있어요.", "warn");
+      return false;
+    }
+  }
+
+  async function pullFromServer() {
+    readConfigFromInputs();
+    await App.persistMeta();
+    const endpoint = resolveEndpoint();
+    if (!endpoint) {
+      UI.toast("설정에서 서버 주소를 먼저 입력해주세요.", "warn");
+      return;
+    }
+    updateStatusUI("syncing");
+    try {
+      const res = await fetch(endpoint, { method: "GET", headers: buildHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const payload = data.record || data.data || data;
+      if (!payload || (!Array.isArray(payload.students) && !Array.isArray(payload.history))) {
+        UI.toast("서버에 아직 저장된 학급 기록이 없어요.", "warn");
+        updateStatusUI("online");
+        return;
+      }
+      const ok = await UI.confirmDialog(
+        `서버의 "${App.state.serverConfig.roomKey}" 학급 데이터(학생 ${(payload.students || []).length}명, 기록 ${(payload.history || []).length}건)를 불러올까요?`,
+        "서버에서 불러오기"
+      );
+      if (!ok) { updateStatusUI("online"); return; }
+
+      const keepServerCfg = { ...App.state.serverConfig, lastSyncedAt: Date.now() };
+      if (payload.meta) {
+        payload.meta.serverConfig = keepServerCfg;
+        await DB.put("meta", payload.meta);
+      }
+      if (Array.isArray(payload.students)) {
+        await DB.clear("students");
+        for (const s of payload.students) await DB.put("students", s);
+      }
+      if (Array.isArray(payload.history)) {
+        await DB.clear("history");
+        for (const h of payload.history) await DB.put("history", h);
+      }
+      if (Array.isArray(payload.swapLogs)) {
+        await DB.clear("swapLogs");
+        for (const l of payload.swapLogs) await DB.put("swapLogs", l);
+      }
+      if (payload.currentSeating) {
+        await DB.put("currentSeating", payload.currentSeating);
+      }
+      await App.init();
+      await History.renderList();
+      await History.renderSwapLogList();
+      updateStatusUI("online");
+      UI.toast("서버에서 최신 기록을 불러왔어요! 🎉", "success");
+    } catch (err) {
+      updateStatusUI("error");
+      UI.toast("서버에서 데이터를 가져오지 못했어요. 서버 연결을 확인해주세요.", "warn");
+    }
+  }
+
+  function bindEvents() {
+    document.getElementById("btn-sync-badge")?.addEventListener("click", () => {
+      document.getElementById("btn-open-settings").click();
+    });
+    document.getElementById("btn-server-test")?.addEventListener("click", testConnection);
+    document.getElementById("btn-server-push")?.addEventListener("click", () => pushToServer(false));
+    document.getElementById("btn-server-pull")?.addEventListener("click", pullFromServer);
+    document.getElementById("btn-history-cloud-push")?.addEventListener("click", () => pushToServer(false));
+    document.getElementById("btn-history-cloud-pull")?.addEventListener("click", pullFromServer);
+  }
+
+  return { readConfigFromInputs, updateStatusUI, pushToServer, pullFromServer, testConnection, bindEvents };
+})();
+
+/* ================= PWAManager (Manifest, Service Worker & Install Prompt) ================= */
+const PWAManager = (() => {
+  let deferredPrompt = null;
+
+  function generateAppIconDataURL(size = 192) {
+    const canvas = document.createElement("canvas");
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    const grad = ctx.createLinearGradient(0, 0, size, size);
+    grad.addColorStop(0, "#5B7CFA");
+    grad.addColorStop(1, "#3EB886");
+    ctx.fillStyle = grad;
+    const r = size * 0.22;
+    ctx.beginPath();
+    ctx.moveTo(r, 0); ctx.lineTo(size - r, 0); ctx.quadraticCurveTo(size, 0, size, r);
+    ctx.lineTo(size, size - r); ctx.quadraticCurveTo(size, size, size - r, size);
+    ctx.lineTo(r, size); ctx.quadraticCurveTo(0, size, 0, size - r);
+    ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    const pad = size * 0.2;
+    const box = size * 0.26;
+    const gap = size * 0.08;
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 2; col++) {
+        const x = pad + col * (box + gap);
+        const y = pad + row * (box + gap);
+        ctx.fillRect(x, y, box, box * 0.82);
+      }
+    }
+    return canvas.toDataURL("image/png");
+  }
+
+  function injectManifestAndIcons() {
+    try {
+      const icon192 = generateAppIconDataURL(192);
+      const icon512 = generateAppIconDataURL(512);
+
+      const appleIcon = document.createElement("link");
+      appleIcon.rel = "apple-touch-icon";
+      appleIcon.href = icon192;
+      document.head.appendChild(appleIcon);
+
+      const fav = document.createElement("link");
+      fav.rel = "icon";
+      fav.type = "image/png";
+      fav.href = icon192;
+      document.head.appendChild(fav);
+
+      // If served from a real server with /manifest.json, link it; otherwise build a Blob manifest
+      const manifestLink = document.createElement("link");
+      manifestLink.rel = "manifest";
+      const manifestObj = {
+        name: "우리반 자리바꾸기",
+        short_name: "자리바꾸기",
+        description: "학급 자리 배치, 기록 관리 및 클라우드 동기화 웹앱",
+        start_url: location.href.split("#")[0],
+        display: "standalone",
+        background_color: "#BFE6FB",
+        theme_color: "#5B7CFA",
+        orientation: "any",
+        icons: [
+          { src: icon192, sizes: "192x192", type: "image/png", purpose: "any maskable" },
+          { src: icon512, sizes: "512x512", type: "image/png", purpose: "any maskable" }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifestObj)], { type: "application/manifest+json" });
+      manifestLink.href = URL.createObjectURL(blob);
+      document.head.appendChild(manifestLink);
+    } catch (e) {}
+  }
+
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") return;
+
+    // First try /sw.js (when hosted with the bundled server package), fallback to inline Blob SW
+    navigator.serviceWorker.register("./sw.js").catch(() => {
+      try {
+        const swCode = `
+          const CACHE_NAME = 'seat-shuffle-v2';
+          self.addEventListener('install', (e) => self.skipWaiting());
+          self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+          self.addEventListener('fetch', (e) => {
+            if (e.request.method !== 'GET' || e.request.url.includes('/api/')) return;
+            e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+          });
+        `;
+        const blob = new Blob([swCode], { type: "application/javascript" });
+        navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+      } catch (err) {}
+    });
+  }
+
+  function bindInstallEvents() {
+    const btn = document.getElementById("btn-pwa-install");
+    const label = document.getElementById("pwa-install-label");
+    if (!btn) return;
+
+    if (window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true) {
+      btn.style.display = "none";
+    }
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      btn.style.display = "inline-flex";
+      if (label) label.textContent = "앱 설치";
+    });
+
+    window.addEventListener("appinstalled", () => {
+      deferredPrompt = null;
+      btn.style.display = "none";
+      UI.toast("자리바꾸기 앱이 설치되었어요! 🎉", "success");
+    });
+
+    btn.addEventListener("click", async () => {
+      SoundFX.click();
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === "accepted") {
+          deferredPrompt = null;
+        }
+      } else {
+        App.openModal("modal-pwa-guide");
+      }
+    });
+  }
+
+  function init() {
+    injectManifestAndIcons();
+    registerServiceWorker();
+    bindInstallEvents();
+  }
+
+  return { init };
+})();
+
 document.addEventListener("DOMContentLoaded", () => {
   App.bindGlobalEvents();
-  App.init().catch(err => console.error(err));
+  ServerSync.bindEvents();
+  PWAManager.init();
+  App.init().then(() => ServerSync.updateStatusUI()).catch(err => console.error(err));
 });
 </script>
 </body>

@@ -1,0 +1,24 @@
+{
+  "name": "우리반 자리바꾸기",
+  "short_name": "자리바꾸기",
+  "description": "학급 자리 배치, 기록 관리 및 서버 동기화 PWA 웹앱",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#BFE6FB",
+  "theme_color": "#5B7CFA",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

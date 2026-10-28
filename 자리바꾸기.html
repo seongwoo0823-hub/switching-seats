@@ -1,0 +1,2940 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>자리바꾸기</title>
+<meta name="theme-color" content="#5B7CFA" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="자리바꾸기" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
+
+<!-- 엑셀 파싱용 라이브러리 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@0.469.0"></script>
+
+<style>
+:root {
+  --sky:     #BFE6FB;
+  --mint:    #CFF3DE;
+  --peach:   #FFE7C7;
+  --lav:     #E6DFFC;
+
+  --ink:      #32324B;
+  --ink-soft: #686884;
+
+  --glass:        rgba(255,255,255,0.58);
+  --glass-strong: rgba(255,255,255,0.82);
+  --glass-border: rgba(255,255,255,0.92);
+  --glass-shadow: 0 8px 32px rgba(80, 90, 150, 0.16);
+
+  --accent:   #5B7CFA;
+  --accent-2: #FF8E72;
+  --accent-3: #3EB886;
+  --danger:   #F25C5C;
+
+  --radius-lg: clamp(18px, 2vw, 28px);
+  --radius-md: clamp(14px, 1.5vw, 20px);
+  --radius-sm: clamp(10px, 1vw, 14px);
+
+  --font-display: 'Jua', 'Gowun Dodum', sans-serif;
+  --font-body: 'Gowun Dodum', 'Jua', sans-serif;
+
+  /* Fluid seat dimensions */
+  --seat-w: clamp(82px, 8.8vw, 126px);
+  --seat-h: clamp(70px, 7.5vw, 106px);
+}
+
+* { box-sizing: border-box; }
+html { margin:0; padding:0; }
+body {
+  margin:0; padding:0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: linear-gradient(180deg, var(--sky) 0%, #DDF3F2 35%, var(--mint) 70%, var(--peach) 100%);
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1,h2,h3 { font-family: var(--font-display); font-weight: normal; margin:0; }
+button { font-family: var(--font-body); cursor:pointer; border:none; }
+input, select, textarea { font-family: var(--font-body); }
+
+/* Lucide Icon Alignment */
+.lucide { width: 1.15em; height: 1.15em; display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
+.w-3 { width: 0.85em !important; height: 0.85em !important; }
+.w-4 { width: 1.05em !important; height: 1.05em !important; }
+.inline { display: inline-block; vertical-align: middle; }
+
+.bg-scene { position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+.cloud {
+  position:absolute; background: rgba(255,255,255,0.75);
+  border-radius: 50%; filter: blur(1px);
+  animation: float 18s ease-in-out infinite;
+}
+.cloud::before, .cloud::after { content:""; position:absolute; background:inherit; border-radius:50%; }
+.c1 { width:120px; height:46px; top:8%; left:8%; }
+.c1::before { width:60px; height:60px; top:-30px; left:15px; }
+.c1::after { width:44px; height:44px; top:-20px; left:65px; }
+.c2 { width:90px; height:36px; top:16%; right:12%; animation-delay: -6s; }
+.c2::before { width:44px; height:44px; top:-22px; left:10px; }
+.c2::after { width:34px; height:34px; top:-14px; left:48px; }
+.c3 { width:70px; height:28px; top:5%; left:45%; animation-delay: -11s; opacity:0.8; }
+.c3::before { width:34px; height:34px; top:-16px; left:8px; }
+.c3::after { width:26px; height:26px; top:-10px; left:36px; }
+.hill {
+  position:absolute; bottom:-10%; left:-10%; right:-10%; height:40%;
+  background: radial-gradient(ellipse at 30% 100%, rgba(180,235,190,0.55), transparent 60%),
+              radial-gradient(ellipse at 75% 100%, rgba(180,225,235,0.5), transparent 55%);
+}
+@keyframes float {
+  0%,100% { transform: translateY(0px); }
+  50% { transform: translateY(14px); }
+}
+
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* Topbar */
+.topbar {
+  position: sticky; top:0; z-index:20;
+  display:flex; align-items:center; justify-content:space-between;
+  padding: clamp(10px, 1.2vw, 15px) clamp(14px, 2vw, 24px);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  margin: 0 clamp(6px, 1vw, 12px);
+  gap: 8px;
+}
+.topbar-left { display:flex; align-items:center; gap:clamp(6px, 0.8vw, 10px); flex:1; min-width:0; flex-wrap:wrap; }
+.topbar-title { text-align:center; flex:1.2; min-width:0; padding:0 6px; }
+.topbar-title h1 {
+  font-size: clamp(17px, 1.3vw + 13px, 26px);
+  color: var(--ink); letter-spacing: 0.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.topbar-title p {
+  margin: 2px 0 0; font-size: clamp(11px, 0.45vw + 9.5px, 13.5px); color: var(--ink-soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.topbar-right { flex:1; display:flex; align-items:center; justify-content:flex-end; gap:clamp(6px, 0.8vw, 10px); min-width:0; flex-wrap:wrap; }
+
+.pill-btn {
+  display:inline-flex; align-items:center; justify-content: center; gap:6px;
+  padding: clamp(7px, 0.8vw, 10px) clamp(12px, 1.4vw, 18px);
+  border-radius: 999px;
+  background: var(--glass-strong); border: 1px solid var(--glass-border);
+  color: var(--ink); font-size: clamp(12.5px, 0.4vw + 11.5px, 14.5px);
+  box-shadow: 0 3px 10px rgba(90,100,160,0.12);
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  white-space: nowrap;
+}
+.pill-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(90,100,160,0.2); }
+.pill-btn:active { transform: translateY(0); }
+.pill-btn.small { padding: clamp(5px, 0.5vw, 7px) clamp(10px, 1vw, 13px); font-size: clamp(11.5px, 0.35vw + 10.5px, 13px); }
+.pill-btn.big { padding: clamp(10px, 1vw, 14px) clamp(16px, 1.8vw, 22px); font-size: clamp(14.5px, 0.5vw + 13px, 17px); font-family: var(--font-display); }
+.pill-btn.accent { background: linear-gradient(135deg, var(--accent), #87A1FF); color:white; border-color: transparent; }
+.pill-btn.accent-2 { background: linear-gradient(135deg, var(--accent-2), #FFB399); color:white; border-color: transparent; }
+.pill-btn.accent-3 { background: linear-gradient(135deg, var(--accent-3), #74D8AC); color:white; border-color: transparent; }
+.pill-btn.danger { background: rgba(242,92,92,0.16); color:#C03838; }
+
+.icon-btn {
+  width:clamp(32px, 2.5vw, 36px); height:clamp(32px, 2.5vw, 36px); border-radius:50%;
+  background: rgba(255,255,255,0.68); color: var(--ink-soft);
+  display:flex; align-items:center; justify-content:center;
+  border: 1px solid var(--glass-border);
+  transition: transform .15s ease, background .15s ease, color .15s ease;
+  flex-shrink: 0;
+}
+.icon-btn:hover { background: rgba(255,255,255,0.95); color: var(--ink); transform: scale(1.05); }
+.icon-btn.muted { background: rgba(242,92,92,0.18); color: #C03838; }
+.sync-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px; border-radius: 999px;
+  font-size: 12px; background: rgba(255,255,255,0.68);
+  border: 1px solid var(--glass-border); color: var(--ink-soft);
+  cursor: pointer; white-space: nowrap;
+}
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #aaa; display: inline-block; }
+.sync-dot.online { background: #3EB886; box-shadow: 0 0 6px rgba(62,184,134,0.6); }
+.sync-dot.syncing { background: #5B7CFA; animation: pulse-dot 1s infinite; }
+.sync-dot.error { background: #F25C5C; }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.25); } }
+
+.check-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  padding: clamp(6px, 0.7vw, 8px) clamp(10px, 1.1vw, 14px);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.62);
+  border: 1px solid var(--glass-border);
+  font-size: clamp(12px, 0.35vw + 11px, 13.5px); cursor:pointer;
+  white-space: nowrap;
+  transition: background .15s ease, color .15s ease;
+}
+.check-pill input[type=radio]:checked + span,
+.check-pill:has(input:checked) {
+  background: linear-gradient(135deg, var(--accent), #87A1FF); color:white; border-color: transparent;
+}
+.check-pill input { display: none; }
+.check-pill:has(input[type=checkbox]) input { display: inline-block; accent-color: white; }
+
+/* Main Layout Container (Stage + Dock Side-by-Side on Desktop) */
+.workspace-wrap {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(210px, 20vw, 245px);
+  gap: clamp(14px, 2vw, 24px);
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: clamp(16px, 2.2vw, 28px) clamp(12px, 2vw, 24px) 60px;
+  align-items: start;
+}
+
+.stage {
+  position:relative;
+  min-height: 68vh;
+  display:flex; flex-direction:column; align-items:center;
+  width: 100%;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  padding: 8px 4px 24px;
+}
+
+.desk-podium {
+  padding: clamp(10px, 1.2vw, 15px) clamp(32px, 4.5vw, 58px);
+  border-radius: var(--radius-md); font-family: var(--font-display);
+  font-size: clamp(16px, 0.8vw + 13px, 22px); letter-spacing: clamp(5px, 0.9vw, 10px);
+  margin-bottom: clamp(18px, 2.5vw, 30px); flex-shrink: 0; white-space: nowrap;
+}
+
+/* Swap guide banner */
+.swap-banner {
+  margin-bottom: 14px; padding: 8px 18px; border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), #87A1FF); color: white;
+  font-size: clamp(12.5px, 0.4vw + 11px, 14px);
+  display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 14px rgba(91,124,250,0.35);
+  animation: pop .2s ease;
+}
+.swap-banner[hidden] { display: none !important; }
+.swap-banner button {
+  background: rgba(255,255,255,0.25); color: white; border-radius: 999px;
+  padding: 2px 9px; font-size: 12px;
+}
+
+.seat-grid {
+  display:flex; gap: clamp(12px, 2.2vw, 32px); justify-content:center; flex-wrap:nowrap; margin: 0 auto;
+  max-width: 100%;
+}
+.section-col { display:flex; flex-direction:column; gap: clamp(8px, 1.1vw, 14px); }
+.desk-row { display:flex; gap: clamp(5px, 0.7vw, 10px); }
+
+.seat {
+  position: relative;
+  width: var(--seat-w);
+  height: var(--seat-h);
+  border-radius: var(--radius-sm);
+  perspective: 800px;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+.seat.selected .seat-face {
+  box-shadow: 0 0 0 3px var(--accent) inset, 0 8px 20px rgba(91,124,250,0.42);
+}
+.seat.selected {
+  transform: translateY(-4px);
+  transition: transform 0.2s ease;
+}
+
+@keyframes shuffle-wiggle {
+  0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  25% { transform: translate(-3px, -4px) rotate(-3deg) scale(1.04); }
+  50% { transform: translate(3px, 2px) rotate(3deg) scale(0.97); }
+  75% { transform: translate(-2px, 3px) rotate(-2deg) scale(1.02); }
+}
+.seat.shuffling {
+  animation: shuffle-wiggle 0.35s ease-in-out 2;
+}
+
+/* Free Mode Responsive Aspect Ratio Container */
+.seat-grid.free-mode {
+  position: relative;
+  width: 100%;
+  max-width: 920px;
+  aspect-ratio: 16 / 10;
+  min-height: 340px;
+  height: auto;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.24);
+  border: 2px dashed rgba(100,110,150,0.32);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.seat-grid.free-mode .seat.free-seat {
+  position: absolute;
+  margin: 0;
+  touch-action: none;
+  width: clamp(64px, 11%, 116px);
+  height: clamp(54px, 14%, 94px);
+}
+.seat-grid.free-mode.edit-desk-mode {
+  border-color: var(--accent);
+  background: rgba(91,124,250,0.08);
+  background-image: radial-gradient(rgba(91,124,250,0.22) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.seat-grid.free-mode.edit-desk-mode .seat.free-seat {
+  cursor: grab; box-shadow: 0 0 0 2px rgba(91,124,250,0.38);
+}
+.seat.free-seat.dragging-pos { cursor:grabbing; z-index: 30; opacity: 0.9; transform: scale(1.04); }
+
+.seat-delete-btn, .seat-lock-btn {
+  display:none; position:absolute; z-index:5;
+  width:24px; height:24px; border-radius:50%;
+  align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,0.22);
+}
+.seat-delete-btn { top:-8px; right:-8px; background: var(--danger); color:white; }
+.seat-lock-btn { top:-8px; left:-8px; background: white; color: var(--ink); }
+.edit-desk-mode .seat-delete-btn, .edit-desk-mode .seat-lock-btn { display:flex; }
+.seat.free-seat.locked { box-shadow: 0 0 0 2.5px var(--accent-2) !important; }
+.seat.free-seat.locked.dragging-pos { cursor:not-allowed; }
+
+.seat-pin-btn {
+  position:absolute; top:3px; right:4px; z-index:3;
+  background:none; color: var(--ink-soft); padding:3px;
+  opacity:0.35; transition: opacity .15s ease, color .15s ease, transform .15s ease;
+}
+.seat.empty .seat-pin-btn, .seat:not(.revealed) .seat-pin-btn { display:none; }
+.seat-pin-btn:hover { opacity:0.85; transform: scale(1.15); }
+.seat.pinned .seat-pin-btn { opacity:1; color: var(--accent-2); }
+.seat.pinned .seat-face-name { box-shadow: 0 0 0 3px var(--accent-2) inset; }
+
+.seat-inner {
+  position:relative; width:100%; height:100%;
+  transform-style: preserve-3d; transition: transform .52s cubic-bezier(.2,.9,.3,1.2);
+}
+.seat.revealed .seat-inner { transform: rotateY(180deg); }
+
+.seat-face {
+  position:absolute; inset:0; border-radius: var(--radius-sm);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  backface-visibility: hidden; padding: 5px; text-align:center;
+}
+.seat-cover {
+  background: linear-gradient(135deg, var(--lav), #C5DCFF);
+  border: 1px solid var(--glass-border); color: var(--ink-soft);
+  font-family: var(--font-display); font-size: clamp(17px, 1.5vw, 22px);
+  box-shadow: 0 4px 12px rgba(90,100,160,0.15);
+}
+.seat-cover:hover { filter: brightness(1.04); }
+.seat-cover .q { font-size: clamp(19px, 1.8vw, 26px); line-height: 1; }
+.seat-cover .tap-hint { font-size: clamp(9.5px, 0.75vw, 11px); margin-top:3px; font-family: var(--font-body); }
+
+.seat-face-name {
+  transform: rotateY(180deg);
+  background: linear-gradient(160deg, #DFF6E6, #C8ECDC);
+  border: 1px solid var(--glass-border); box-shadow: 0 4px 12px rgba(90,100,160,0.15);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.seat.empty .seat-face-name {
+  background: repeating-linear-gradient(45deg, rgba(242,242,247,0.8), rgba(242,242,247,0.8) 6px, rgba(230,230,238,0.8) 6px, rgba(230,230,238,0.8) 12px);
+  color: var(--ink-soft);
+}
+.seat.male .seat-face-name { background: linear-gradient(160deg, #DCEBFF, #C4DCFB); }
+
+.seat-photo {
+  width: clamp(26px, 2.7vw, 42px); height: clamp(26px, 2.7vw, 42px); border-radius:50%;
+  object-fit:cover; margin-bottom:3px; border: 2px solid white;
+  flex-shrink: 0;
+}
+.seat-name {
+  display:block; max-width:96%; font-size: clamp(12px, 0.75vw + 9px, 16.5px);
+  font-weight: 700; line-height:1.15; white-space: nowrap; overflow:hidden; text-overflow: ellipsis;
+}
+.seat-badge { font-size: clamp(11px, 0.9vw, 14px); position:absolute; top:3px; left:5px; color: var(--accent-2); }
+.seat-number { font-size: clamp(9px, 0.7vw, 10.5px); color: var(--ink-soft); position:absolute; bottom:2px; right:5px; font-weight: 600; }
+
+.empty-state {
+  padding: clamp(24px, 4vw, 40px) clamp(24px, 5vw, 56px); border-radius: var(--radius-lg);
+  text-align:center; margin-top: 24px; max-width: 420px;
+}
+.empty-state p { margin: 0 0 14px; color: var(--ink-soft); font-size: clamp(13.5px, 0.5vw + 12px, 15.5px); line-height: 1.5; }
+.empty-state-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
+.scroll-hint {
+  position: sticky; left: 50%; transform: translateX(-50%);
+  margin-top: 14px; padding: 7px 16px; border-radius:999px;
+  font-size: 12.5px; color: var(--ink-soft);
+  animation: hint-fade 3.2s ease forwards; pointer-events: none;
+}
+@keyframes hint-fade { 0%,65%{ opacity:1; } 100%{ opacity:0; } }
+
+/* Dock Panel */
+.dock {
+  position: sticky; top: 82px; z-index: 15;
+  width: 100%; padding: clamp(14px, 1.4vw, 18px) clamp(12px, 1.2vw, 15px);
+  border-radius: var(--radius-lg);
+  display:flex; flex-direction:column; gap:9px;
+  max-height: calc(100vh - 100px); overflow-y:auto;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+}
+.dock .pill-btn { justify-content:center; width:100%; }
+.dock .pill-btn.big { font-size: clamp(15px, 0.5vw + 13px, 17px); padding: 12px 14px; }
+.dock-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.dock-divider { height:1px; background: rgba(120,120,150,0.2); margin:3px 0; }
+#dock-free-controls { display:flex; flex-direction:column; gap:8px; background: rgba(255,255,255,0.45); padding: 10px; border-radius: var(--radius-sm); }
+#dock-free-controls[hidden] { display: none !important; }
+.check-row, .select-row {
+  display:flex; align-items:center; justify-content:space-between;
+  font-size: clamp(12.5px, 0.3vw + 11.5px, 13.5px); padding: 5px 4px; cursor: pointer;
+}
+.check-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+.select-row select {
+  border-radius: 999px; padding: 5px 10px; border:1px solid var(--glass-border);
+  background: rgba(255,255,255,0.8); outline:none; font-size: 13px; color: var(--ink);
+}
+
+.dock-toggle-btn {
+  display:none; position:fixed; bottom:20px; right:20px; z-index:40;
+  padding: 0 18px; height:50px; border-radius:999px;
+  background: linear-gradient(135deg, var(--accent), #87A1FF); color:white;
+  align-items:center; justify-content:center; gap: 7px;
+  font-family: var(--font-display); font-size: 15px;
+  box-shadow:0 6px 20px rgba(91,124,250,0.45);
+}
+
+.dock-overlay {
+  display:none; position:fixed; inset:0; background:rgba(30,35,60,0.38); backdrop-filter: blur(2px); z-index:45; opacity:0; transition:opacity 0.28s;
+}
+
+/* Tablet & Mobile Responsive Adaptations */
+@media (max-width: 960px) {
+  .workspace-wrap {
+    grid-template-columns: 1fr;
+    padding: 16px 10px 90px;
+  }
+  .dock {
+    position: fixed;
+    top: auto; bottom: 0; right: 0; left: 0;
+    width: 100%; max-width: none; max-height: 82vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    z-index: 50;
+    box-shadow: 0 -8px 30px rgba(40,50,90,0.22);
+    padding: 20px 16px 28px;
+    background: rgba(255,255,255,0.92);
+    transform: translateY(105%);
+  }
+  .dock.open { transform: translateY(0); }
+  .dock-overlay.open { display:block; opacity:1; }
+  .dock-toggle-btn { display:inline-flex; }
+
+  .dock #btn-shuffle,
+  .dock .dock-row-2,
+  .dock p.hint,
+  .dock #dock-free-controls { grid-column: 1 / -1; }
+  .dock-divider { display:none; }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --seat-w: clamp(64px, 20vw, 88px);
+    --seat-h: clamp(56px, 17vw, 76px);
+  }
+  .topbar {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+  .topbar-title {
+    order: -1;
+    flex: 1 1 100%;
+    margin-bottom: 4px;
+  }
+  .topbar-left, .topbar-right {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .seat-grid { gap: clamp(8px, 2.5vw, 16px); }
+  .desk-row { gap: 4px; }
+  .section-col { gap: 7px; }
+  .seat-grid.free-mode { aspect-ratio: 4 / 3; min-height: 300px; }
+}
+
+/* Modals */
+.modal-overlay {
+  position: fixed; inset:0; background: rgba(45,50,80,0.34);
+  backdrop-filter: blur(5px); display:flex; align-items:center; justify-content:center;
+  z-index: 100; padding: clamp(12px, 2.5vw, 20px);
+}
+.modal-overlay[hidden] { display:none !important; }
+.modal {
+  width: 100%; max-width: 480px; max-height: 88vh; overflow-y:auto;
+  border-radius: var(--radius-lg); background: var(--glass-strong);
+  display:flex; flex-direction:column; animation: pop .22s ease;
+}
+.modal.big { max-width: 680px; }
+.modal.small { max-width: 380px; }
+@keyframes pop { from{ transform: scale(.93); opacity:0; } to{ transform: scale(1); opacity:1; } }
+
+.modal-head {
+  display:flex; align-items:center; justify-content:space-between;
+  padding: clamp(14px, 1.8vw, 18px) clamp(16px, 2.2vw, 22px);
+  border-bottom: 1px solid rgba(120,120,150,0.15);
+}
+.modal-body { padding: clamp(16px, 2vw, 20px) clamp(16px, 2.2vw, 22px); overflow-y: auto; }
+.modal-body.center { display:flex; flex-direction:column; align-items:center; gap:16px; }
+.modal-foot {
+  padding: clamp(12px, 1.5vw, 16px) clamp(16px, 2.2vw, 22px);
+  border-top: 1px solid rgba(120,120,150,0.15);
+  display:flex; justify-content:flex-end; gap:10px; flex-wrap: wrap;
+}
+
+.settings-section { margin-bottom: 22px; }
+.settings-section:last-child { margin-bottom: 4px; }
+.settings-section h3 { font-size:16px; margin-bottom:10px; color: var(--ink); display:flex; align-items:center; gap:6px; }
+
+.form-row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+.form-row.wrap { flex-wrap:wrap; align-items:center; }
+.form-row label { display:flex; flex-direction:column; gap:5px; font-size:13px; color: var(--ink-soft); flex:1 1 110px; }
+.form-row input, .form-row select, .form-row textarea {
+  padding: 9px 12px; border-radius: var(--radius-sm);
+  border: 1px solid rgba(120,120,150,0.28); background: rgba(255,255,255,0.8);
+  font-size: 14px; color: var(--ink); outline:none; width: 100%;
+}
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,124,250,0.18);
+}
+.form-row textarea { resize: vertical; }
+#input-new-name { flex:2 1 160px; min-width: 140px; }
+#input-new-gender { flex:0 1 105px; width: auto; }
+.or-divider { font-size:12px; color: var(--ink-soft); }
+.file-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  padding: 8px 14px; border-radius:999px;
+  background: rgba(255,255,255,0.8); border:1px solid rgba(120,120,150,0.25);
+  font-size: 13px; cursor:pointer; white-space: nowrap;
+}
+.file-pill:hover { background: white; }
+.file-pill.small { padding:6px 12px; font-size:12.5px; }
+.hint { font-size:12px; color: var(--ink-soft); margin: 8px 0 10px; line-height: 1.45; }
+
+.student-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; max-height:260px; overflow-y:auto; }
+.student-row {
+  display:flex; align-items:center; gap:10px;
+  padding: 7px 10px; border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.62);
+}
+.student-row .s-num { font-size: 12px; color: var(--ink-soft); width: 22px; text-align: center; font-weight: 700; }
+.student-row img.mini-photo { width:30px; height:30px; border-radius:50%; object-fit:cover; flex-shrink: 0; }
+.student-row .mini-photo-placeholder {
+  width:30px; height:30px; border-radius:50%; background: #e4e6f2;
+  display:flex; align-items:center; justify-content:center; font-size:12px; color:#667; flex-shrink: 0;
+}
+.student-row .mini-photo-placeholder.male { background: #D6E6FF; color: #3A66B8; }
+.student-row .s-name { flex:1; min-width:0; font-size:14.5px; font-weight: 600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.student-row .s-role { font-size:12px; color: var(--accent-2); font-weight: 600; }
+.student-row button { background:none; color: var(--ink-soft); padding:5px; border-radius:8px; display:flex; align-items:center; }
+.student-row button:hover { background: rgba(0,0,0,0.07); color: var(--ink); }
+
+.stepper { display:flex; align-items:center; gap:10px; margin-top: 4px; }
+.stepper span { font-family: var(--font-display); font-size: 18px; min-width: 24px; text-align: center; color: var(--ink); }
+.step-btn {
+  width:32px; height:32px; border-radius:50%; background: rgba(255,255,255,0.85);
+  color: var(--ink); display:flex; align-items:center; justify-content:center;
+  border: 1px solid rgba(120,120,150,0.2);
+}
+.step-btn:hover { background: white; transform: scale(1.06); }
+
+.mode-tabs { display:flex; gap:8px; margin-bottom:18px; }
+.mode-tab-btn {
+  flex:1; padding:10px; border-radius: var(--radius-sm); display:flex; align-items:center; justify-content:center; gap:6px;
+  background: rgba(255,255,255,0.55); color: var(--ink-soft); font-size:14px; border: 1px solid transparent;
+}
+.mode-tab-btn.active { background: linear-gradient(135deg, var(--accent), #87A1FF); color:white; font-weight:600; }
+.segmented { display:flex; gap:6px; flex-wrap: wrap; }
+.seg-btn {
+  padding:8px 14px; border-radius:999px; background: rgba(255,255,255,0.65);
+  color: var(--ink-soft); font-size:13.5px; display:flex; align-items:center; gap:5px;
+}
+.seg-btn.active { background: linear-gradient(135deg, var(--accent-3), #74D8AC); color:white; font-weight: 600; }
+
+.photo-upload-wrap { display:flex; flex-direction:column; align-items:center; gap:10px; }
+#student-edit-photo-preview { width:106px; height:106px; border-radius:50%; object-fit:cover; border: 3px solid white; box-shadow: var(--glass-shadow); }
+.photo-placeholder {
+  width:106px; height:106px; border-radius:50%; background: #eceef5;
+  display:flex; align-items:center; justify-content:center; color:#889; font-size:13px; flex-direction:column; gap:4px;
+}
+.role-toggle-row { display:flex; gap:8px; flex-wrap: wrap; justify-content: center; }
+
+.swap-summary { text-align:center; font-family: var(--font-display); font-size:20px; color: var(--ink); margin: 4px 0 16px; }
+
+.history-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+.history-row {
+  display:flex; flex-direction: column; gap:10px;
+  padding: 12px 15px; border-radius: var(--radius-sm); background: rgba(255,255,255,0.62);
+}
+.history-row-top { display:flex; align-items:center; justify-content:space-between; gap:10px; width: 100%; flex-wrap: wrap; }
+.history-row .h-info { min-width:160px; flex:1; }
+.history-row .h-meta { font-size:12.5px; color: var(--ink-soft); }
+.history-row .h-title { font-weight:700; margin-bottom:2px; font-size: 14.5px; }
+.history-row .h-actions { display:flex; gap:6px; flex-shrink:0; flex-wrap: wrap; }
+.history-preview { width: 100%; overflow-x: auto; padding-top: 8px; border-top: 1px dashed rgba(120,120,150,0.22); }
+
+/* Toast Notification */
+.toast-container {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  z-index: 200; display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none; width: max-content; max-width: 92vw;
+}
+.toast-msg {
+  background: rgba(42, 45, 72, 0.92); color: white;
+  backdrop-filter: blur(10px);
+  padding: 11px 20px; border-radius: 999px;
+  font-size: clamp(13px, 0.4vw + 12px, 14.5px);
+  box-shadow: 0 8px 24px rgba(30, 35, 60, 0.28);
+  display: flex; align-items: center; gap: 8px;
+  animation: toast-in 0.25s ease;
+}
+.toast-msg.warn { background: rgba(210, 68, 68, 0.94); }
+.toast-msg.success { background: rgba(46, 150, 108, 0.94); }
+@keyframes toast-in {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media print {
+  body * { visibility:hidden; }
+  #print-area { display:block !important; position:absolute; top:0; left:0; width:100%; }
+  #print-area * { visibility:visible; }
+  .bg-scene, .toast-container, .dock-toggle-btn { display:none !important; }
+}
+#print-area { display:none; }
+</style>
+</head>
+<body>
+
+<div class="bg-scene" aria-hidden="true">
+  <div class="cloud c1"></div>
+  <div class="cloud c2"></div>
+  <div class="cloud c3"></div>
+  <div class="hill"></div>
+</div>
+
+<header class="topbar glass">
+  <div class="topbar-left">
+    <button id="btn-open-settings" class="pill-btn accent" type="button">
+      <i data-lucide="settings"></i> 설정
+    </button>
+    <button id="btn-open-history" class="pill-btn" type="button">
+      <i data-lucide="book-open"></i> 기록보기
+    </button>
+  </div>
+  <div class="topbar-title">
+    <h1 id="class-title">자리바꾸기</h1>
+    <p id="class-sub">학년/반을 설정해주세요</p>
+  </div>
+  <div class="topbar-right">
+    <button id="btn-pwa-install" class="pill-btn small accent-3" type="button" title="앱으로 설치하기">
+      <i data-lucide="download"></i> <span id="pwa-install-label">앱 설치</span>
+    </button>
+    <button id="btn-sync-badge" class="sync-badge" type="button" title="서버 동기화 상태 (클릭하여 설정)">
+      <span id="sync-dot" class="sync-dot"></span>
+      <span id="sync-status-text">로컬 저장</span>
+    </button>
+    <label class="check-pill">
+      <input type="checkbox" id="chk-boy-mark" />
+      <span>남학생 색상표시</span>
+    </label>
+    <button id="btn-sound-toggle" class="icon-btn" type="button" title="효과음 켜기/끄기" aria-label="효과음 켜기/끄기">
+      <i data-lucide="volume-2" id="icon-sound-on"></i>
+      <i data-lucide="volume-x" id="icon-sound-off" style="display:none;"></i>
+    </button>
+  </div>
+</header>
+
+<div class="workspace-wrap">
+  <main class="stage">
+    <div class="desk-podium glass" id="podium">교 탁</div>
+    <div id="swap-banner" class="swap-banner" hidden>
+      <i data-lucide="repeat"></i>
+      <span id="swap-banner-text">교환할 다른 자리를 클릭하세요</span>
+      <button type="button" id="btn-cancel-swap">취소</button>
+    </div>
+    <div id="seat-grid" class="seat-grid"></div>
+    <div id="scroll-hint" class="scroll-hint glass" hidden><i data-lucide="arrow-left-right" class="w-4 h-4 inline"></i> 옆으로 스크롤해서 더 보기</div>
+
+    <div class="empty-state glass" id="empty-state" hidden>
+      <p><i data-lucide="users" style="width:32px;height:32px;margin-bottom:8px;opacity:0.55;"></i><br>아직 등록된 학생이 없어요.<br>설정에서 명단을 추가하거나 샘플 학급으로 바로 체험해보세요!</p>
+      <div class="empty-state-actions">
+        <button id="btn-empty-settings" class="pill-btn accent" type="button"><i data-lucide="user-plus"></i> 설정에서 학생 추가하기</button>
+        <button id="btn-load-sample" class="pill-btn accent-3" type="button"><i data-lucide="sparkles"></i> 샘플 학급(24명) 불러오기</button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="dock glass" id="dock">
+    <button id="btn-shuffle" class="pill-btn accent-2 big" type="button">
+      <i data-lucide="dices"></i> 자리 배치
+    </button>
+    <div class="dock-row-2">
+      <button id="btn-reveal-all" class="pill-btn small" type="button"><i data-lucide="eye"></i> 전체 공개</button>
+      <button id="btn-hide-all" class="pill-btn small" type="button"><i data-lucide="eye-off"></i> 전체 가리기</button>
+    </div>
+
+    <label class="check-row">
+      <span><i data-lucide="shuffle"></i> 교환 시 사유 필수</span>
+      <input type="checkbox" id="chk-require-reason" checked />
+    </label>
+    <p class="hint" style="margin:0 0 4px;"><i data-lucide="info" style="width:12px;height:12px;"></i> 공개된 자리의 핀을 누르면 다음 배치에도 유지해요. <b>자리를 클릭 후 다른 자리를 클릭하면 교환됩니다.</b></p>
+
+    <div class="dock-divider"></div>
+
+    <button id="btn-desk-layout" class="pill-btn" type="button"><i data-lucide="armchair"></i> 책상 배치하기</button>
+
+    <div id="dock-free-controls" hidden>
+      <label class="check-row">
+        <span><i data-lucide="map-pin"></i> 책상 위치 편집</span>
+        <input type="checkbox" id="chk-free-edit" />
+      </label>
+      <button id="btn-add-desk-dock" class="pill-btn small" type="button"><i data-lucide="plus"></i> 책상 추가</button>
+      <p class="hint" style="margin:2px 0 0;">편집 중 자물쇠 아이콘으로 책상 위치를 고정할 수 있어요.</p>
+    </div>
+
+    <label class="check-row">
+      <span><i data-lucide="layout-grid"></i> 빈자리 보이기</span>
+      <input type="checkbox" id="chk-show-empty" />
+    </label>
+
+    <label class="select-row">
+      <span>분단 수</span>
+      <select id="sel-sections">
+        <option value="1">1분단</option>
+        <option value="2">2분단</option>
+        <option value="3" selected>3분단</option>
+        <option value="4">4분단</option>
+        <option value="5">5분단</option>
+        <option value="6">6분단</option>
+        <option value="7">7분단</option>
+        <option value="8">8분단</option>
+      </select>
+    </label>
+
+    <label class="check-row">
+      <span><i data-lucide="hash"></i> 번호 함께 표시</span>
+      <input type="checkbox" id="chk-show-number" />
+    </label>
+
+    <label class="check-row">
+      <span><i data-lucide="image"></i> 사진 함께 표시</span>
+      <input type="checkbox" id="chk-show-photo" />
+    </label>
+
+    <div class="dock-divider"></div>
+
+    <button id="btn-save-history" class="pill-btn accent-3" type="button"><i data-lucide="save"></i> 기록에 저장</button>
+
+    <div class="dock-divider"></div>
+
+    <div class="dock-row-2">
+      <button id="btn-print-board" class="pill-btn small" type="button"><i data-lucide="printer"></i> 출력(게시용)</button>
+      <button id="btn-print-teacher" class="pill-btn small" type="button"><i data-lucide="printer"></i> 출력(교탁용)</button>
+    </div>
+  </aside>
+</div>
+
+<!-- Mobile Overlay & Toggle -->
+<div class="dock-overlay" id="dock-overlay"></div>
+<button class="dock-toggle-btn" id="btn-dock-toggle" type="button">
+  <i data-lucide="sliders-horizontal"></i> 메뉴
+</button>
+
+<!-- Settings Modal -->
+<div id="modal-settings" class="modal-overlay" hidden>
+  <div class="modal glass big">
+    <header class="modal-head">
+      <h2>설정</h2>
+      <button class="icon-btn close-modal" data-close="modal-settings" type="button"><i data-lucide="x"></i></button>
+    </header>
+    <div class="modal-body">
+      <section class="settings-section">
+        <h3><i data-lucide="school"></i> 학급 정보</h3>
+        <div class="form-row">
+          <label>학년<input type="number" id="input-grade" min="1" max="6" placeholder="예: 5" /></label>
+          <label>반<input type="number" id="input-class" min="1" max="20" placeholder="예: 2" /></label>
+          <label>담임 이름<input type="text" id="input-teacher" placeholder="예: 김선생" /></label>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h3><i data-lucide="users"></i> 학생 명단 (<span id="settings-student-count">0</span>명)</h3>
+        <div class="form-row wrap">
+          <input type="text" id="input-new-name" placeholder="학생 이름 입력 후 Enter" />
+          <select id="input-new-gender">
+            <option value="F">여학생</option>
+            <option value="M">남학생</option>
+          </select>
+          <button id="btn-add-student" class="pill-btn accent small" type="button"><i data-lucide="plus"></i> 추가</button>
+          <button id="btn-sample-in-settings" class="pill-btn accent-3 small" type="button"><i data-lucide="sparkles"></i> 샘플 채우기</button>
+        </div>
+        <div class="form-row wrap" style="margin-top: 8px;">
+          <button id="btn-download-template" class="pill-btn small" type="button"><i data-lucide="download"></i> 엑셀 양식 다운로드</button>
+          <label class="file-pill small">
+            <i data-lucide="file-spreadsheet"></i> 엑셀로 불러오기
+            <input type="file" id="input-excel" accept=".xlsx,.xls,.csv" hidden />
+          </label>
+          <button id="btn-clear-students" class="pill-btn danger small" type="button"><i data-lucide="trash-2"></i> 전체 삭제</button>
+        </div>
+        <p class="hint">양식을 다운받아 <b>이름</b>(첫 열), <b>성별 M/F</b>(둘째 열)을 채운 뒤 업로드하면 자동으로 인식해요.</p>
+        <ul id="student-list" class="student-list"></ul>
+      </section>
+
+      <section class="settings-section">
+        <h3><i data-lucide="cloud"></i> 서버 저장 및 클라우드 동기화</h3>
+        <div class="form-row">
+          <label style="flex:2 1 220px;">서버 API 주소 (비워두면 현재 호스트 <code>/api/sync</code> 사용)
+            <input type="text" id="input-server-url" placeholder="예: https://my-school-server.com/api/sync 또는 /api/sync" />
+          </label>
+          <label style="flex:1 1 130px;">학급 동기화 코드 (방 번호)
+            <input type="text" id="input-sync-room" placeholder="예: 2026-5-2" />
+          </label>
+          <label style="flex:1 1 120px;">보안 키 / 비밀번호 (선택)
+            <input type="password" id="input-sync-token" placeholder="선택 입력" />
+          </label>
+        </div>
+        <div class="form-row wrap" style="margin-top: 10px; justify-content: space-between;">
+          <label class="check-row" style="flex:0 0 auto; gap:8px;">
+            <span>기록 저장 시 서버에 자동 업로드</span>
+            <input type="checkbox" id="chk-auto-sync" />
+          </label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="btn-server-test" class="pill-btn small" type="button"><i data-lucide="wifi"></i> 연결 확인</button>
+            <button id="btn-server-push" class="pill-btn accent small" type="button"><i data-lucide="cloud-upload"></i> 지금 서버에 저장</button>
+            <button id="btn-server-pull" class="pill-btn accent-3 small" type="button"><i data-lucide="cloud-download"></i> 서버에서 불러오기</button>
+          </div>
+        </div>
+        <p class="hint" id="server-sync-last-info">서버 주소를 설정하거나 함께 제공된 Node.js/Python 서버(<code>server.js</code>)로 실행하면 학급 명단과 배치 기록이 서버 DB에 영구 보관됩니다.</p>
+      </section>
+
+      <section class="settings-section">
+        <h3><i data-lucide="database"></i> 데이터 백업 (파일)</h3>
+        <div class="form-row wrap">
+          <button id="btn-export-data" class="pill-btn small" type="button"><i data-lucide="upload"></i> 전체 데이터 내보내기</button>
+          <label class="file-pill small">
+            <i data-lucide="download"></i> 백업 파일 불러오기
+            <input type="file" id="input-import-data" accept="application/json" hidden />
+          </label>
+        </div>
+        <p class="hint">이 기기에 저장된 학생 명단, 자리 배치 기록 등을 파일 하나로 백업하거나 복원합니다.</p>
+      </section>
+    </div>
+    <footer class="modal-foot">
+      <button id="btn-settings-save" class="pill-btn accent big" type="button">저장하고 닫기</button>
+    </footer>
+  </div>
+</div>
+
+<!-- Desk Layout Modal -->
+<div id="modal-desk" class="modal-overlay" hidden>
+  <div class="modal glass">
+    <header class="modal-head">
+      <h2>책상 배치하기</h2>
+      <button class="icon-btn close-modal" data-close="modal-desk" type="button"><i data-lucide="x"></i></button>
+    </header>
+    <div class="modal-body">
+      <div class="mode-tabs">
+        <button class="mode-tab-btn" data-mode="grid" type="button"><i data-lucide="grid"></i> 그리드 배치</button>
+        <button class="mode-tab-btn" data-mode="free" type="button"><i data-lucide="hand"></i> 자유 배치</button>
+      </div>
+
+      <div id="desk-grid-controls">
+        <div class="form-row">
+          <label>분단 수
+            <div class="stepper">
+              <button class="step-btn" data-step="sections" data-dir="-1" type="button"><i data-lucide="minus"></i></button>
+              <span id="val-sections">3</span>
+              <button class="step-btn" data-step="sections" data-dir="1" type="button"><i data-lucide="plus"></i></button>
+            </div>
+          </label>
+          <label>줄 수
+            <div class="stepper">
+              <button class="step-btn" data-step="rows" data-dir="-1" type="button"><i data-lucide="minus"></i></button>
+              <span id="val-rows">5</span>
+              <button class="step-btn" data-step="rows" data-dir="1" type="button"><i data-lucide="plus"></i></button>
+            </div>
+          </label>
+        </div>
+        <div class="form-row" style="margin-top:14px;">
+          <label>좌석 형태
+            <div class="segmented">
+              <button class="seg-btn" data-seats-per-desk="2" type="button"><i data-lucide="users"></i> 짝꿍(2인)</button>
+              <button class="seg-btn" data-seats-per-desk="1" type="button"><i data-lucide="user"></i> 1인 1줄</button>
+            </div>
+          </label>
+        </div>
+        <p class="hint">총 좌석 수: <b id="val-total-seats">30</b>석</p>
+      </div>
+
+      <div id="desk-free-controls" hidden>
+        <p class="hint">적용 후 메뉴에서 <b>'책상 위치 편집'</b>을 켜고 마우스/터치로 자유롭게 옮기거나 삭제하세요.</p>
+        <div class="form-row wrap">
+          <button id="btn-free-add-in-modal" class="pill-btn accent small" type="button"><i data-lucide="plus"></i> 책상 추가</button>
+          <button id="btn-free-reset-in-modal" class="pill-btn small" type="button"><i data-lucide="layout-grid"></i> 격자 기준으로 정렬</button>
+          <button id="btn-free-clear-in-modal" class="pill-btn danger small" type="button"><i data-lucide="trash-2"></i> 전체 비우기</button>
+        </div>
+        <p class="hint">현재 책상 수: <b id="val-total-seats-free">0</b>개</p>
+      </div>
+    </div>
+    <footer class="modal-foot">
+      <button id="btn-desk-apply" class="pill-btn accent big" type="button">적용하기</button>
+    </footer>
+  </div>
+</div>
+
+<!-- Student Edit Modal -->
+<div id="modal-student-edit" class="modal-overlay" hidden>
+  <div class="modal glass small">
+    <header class="modal-head">
+      <h2 id="student-edit-name">학생 정보</h2>
+      <button class="icon-btn close-modal" data-close="modal-student-edit" type="button"><i data-lucide="x"></i></button>
+    </header>
+    <div class="modal-body center">
+      <div class="form-row" style="width:100%;">
+        <label>이름
+          <input type="text" id="student-edit-name-input" placeholder="학생 이름" />
+        </label>
+        <label style="flex:0 0 100px;">성별
+          <select id="student-edit-gender-input">
+            <option value="F">여학생</option>
+            <option value="M">남학생</option>
+          </select>
+        </label>
+      </div>
+      <div class="photo-upload-wrap">
+        <img id="student-edit-photo-preview" src="" alt="" hidden />
+        <div id="student-edit-photo-placeholder" class="photo-placeholder"><i data-lucide="camera" style="width:24px;height:24px;"></i>사진 없음</div>
+        <div style="display:flex; gap:6px;">
+          <label class="file-pill small">
+            <i data-lucide="image"></i> 사진 선택
+            <input type="file" id="student-edit-photo-input" accept="image/*" hidden />
+          </label>
+          <button id="btn-student-photo-remove" class="pill-btn danger small" type="button" hidden><i data-lucide="trash-2"></i> 사진 삭제</button>
+        </div>
+      </div>
+      <div class="role-toggle-row">
+        <label class="check-pill">
+          <input type="radio" name="role" id="role-none" value="none" />
+          <span>일반</span>
+        </label>
+        <label class="check-pill">
+          <input type="radio" name="role" id="role-president" value="president" />
+          <span><i data-lucide="crown" class="w-3 h-3 inline"></i> 반장</span>
+        </label>
+        <label class="check-pill">
+          <input type="radio" name="role" id="role-vice" value="vice" />
+          <span><i data-lucide="award" class="w-3 h-3 inline"></i> 부반장</span>
+        </label>
+      </div>
+    </div>
+    <footer class="modal-foot">
+      <button id="btn-student-edit-save" class="pill-btn accent big" type="button">저장</button>
+    </footer>
+  </div>
+</div>
+
+<!-- History Modal -->
+<div id="modal-history" class="modal-overlay" hidden>
+  <div class="modal glass big">
+    <header class="modal-head">
+      <h2>자리 배치 기록</h2>
+      <button class="icon-btn close-modal" data-close="modal-history" type="button"><i data-lucide="x"></i></button>
+    </header>
+    <div class="modal-body">
+      <div class="form-row wrap" style="justify-content:space-between; align-items:flex-end;">
+        <label style="max-width:200px;">월 선택
+          <select id="filter-month"><option value="all">전체</option></select>
+        </label>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="btn-history-cloud-push" class="pill-btn accent small" type="button"><i data-lucide="cloud-upload"></i> 서버에 기록 백업</button>
+          <button id="btn-history-cloud-pull" class="pill-btn accent-3 small" type="button"><i data-lucide="cloud-download"></i> 서버 기록 가져오기</button>
+        </div>
+      </div>
+      <ul id="history-list" class="history-list" style="margin-top:12px;"></ul>
+      <h3 style="margin:24px 0 10px; display:flex; align-items:center; gap:6px;"><i data-lucide="history"></i> 자리 교환 사유 기록</h3>
+      <ul id="swap-log-list" class="history-list"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- Swap Reason Modal -->
+<div id="modal-swap-reason" class="modal-overlay" hidden>
+  <div class="modal glass small">
+    <header class="modal-head">
+      <h2>자리 교환</h2>
+      <button class="icon-btn close-modal" data-close="modal-swap-reason" type="button"><i data-lucide="x"></i></button>
+    </header>
+    <div class="modal-body">
+      <p id="swap-reason-summary" class="swap-summary">OOO ↔ ㅁㅁㅁ</p>
+      <label class="form-row" style="flex-direction:column; align-items:stretch;">
+        <span style="font-size:13px; color: var(--ink-soft); margin-bottom:6px;">교환 사유를 입력해주세요</span>
+        <textarea id="swap-reason-input" rows="3" placeholder="예: 시력이 안 좋아서 앞자리로 이동 / 서로 원해서 등"></textarea>
+      </label>
+    </div>
+    <footer class="modal-foot" style="justify-content:space-between;">
+      <button class="pill-btn close-modal" data-close="modal-swap-reason" type="button">취소</button>
+      <button id="btn-swap-reason-confirm" class="pill-btn accent" type="button">교환하기</button>
+    </footer>
+  </div>
+</div>
+
+<!-- Custom Confirm Modal (Replaces blocked window.confirm) -->
+<div id="modal-confirm" class="modal-overlay" hidden>
+  <div class="modal glass small">
+    <header class="modal-head">
+      <h2 id="confirm-title">확인</h2>
+      <button class="icon-btn" id="btn-confirm-x" type="button"><i data-lucide="x"></i></button>
+    </header>
+    <div class="modal-body">
+      <p id="confirm-message" style="margin:0; font-size:15px; line-height:1.55; color:var(--ink);"></p>
+    </div>
+    <footer class="modal-foot" style="justify-content:flex-end;">
+      <button id="btn-confirm-cancel" class="pill-btn" type="button">취소</button>
+      <button id="btn-confirm-ok" class="pill-btn accent" type="button">확인</button>
+    </footer>
+  </div>
+</div>
+
+<!-- PWA Install Guide Modal -->
+<div id="modal-pwa-guide" class="modal-overlay" hidden>
+  <div class="modal glass small">
+    <header class="modal-head">
+      <h2><i data-lucide="smartphone"></i> 앱으로 설치하기 (PWA)</h2>
+      <button class="icon-btn close-modal" data-close="modal-pwa-guide" type="button"><i data-lucide="x"></i></button>
+    </header>
+    <div class="modal-body" style="font-size:14px; line-height:1.6;">
+      <p style="margin-top:0;">이 웹앱은 <b>PWA(Progressive Web App)</b> 규격이 적용되어 있어 PC나 스마트폰·태블릿 홈 화면에 앱처럼 설치하고 오프라인에서도 사용할 수 있습니다.</p>
+      <div style="background:rgba(255,255,255,0.65); padding:12px 14px; border-radius:12px; margin-bottom:10px;">
+        <b>💻 PC (Chrome / Edge / Whale)</b><br>
+        주소창 오른쪽 끝의 <b>[앱 설치 ⊕]</b> 아이콘을 누르거나 브라우저 메뉴(⋮) → <b>[앱 설치 / 페이지 설치]</b>를 클릭하세요.
+      </div>
+      <div style="background:rgba(255,255,255,0.65); padding:12px 14px; border-radius:12px; margin-bottom:10px;">
+        <b>🍎 iPhone / iPad (Safari)</b><br>
+        하단(또는 상단) <b>[공유하기 📤]</b> 버튼을 누른 뒤 <b>[홈 화면에 추가]</b>를 선택하세요.
+      </div>
+      <div style="background:rgba(255,255,255,0.65); padding:12px 14px; border-radius:12px;">
+        <b>🤖 Android (Chrome / 삼성 인터넷)</b><br>
+        우측 메뉴(⋮)에서 <b>[앱 설치]</b> 또는 <b>[홈 화면에 추가]</b>를 선택하세요.
+      </div>
+      <p class="hint" style="margin-bottom:0;">※ 브라우저 미리보기(iframe) 내부가 아닌 독립된 탭(또는 패키지의 서버 실행 주소)에서 열면 원클릭 설치창이 바로 뜹니다.</p>
+    </div>
+    <footer class="modal-foot">
+      <button class="pill-btn accent close-modal" data-close="modal-pwa-guide" type="button">확인</button>
+    </footer>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container" class="toast-container"></div>
+
+<div id="print-area"></div>
+
+<script>
+/* ================= SoundFX (Web Audio API Synthesizer) ================= */
+const SoundFX = (() => {
+  let ctx = null;
+  let enabled = true;
+
+  function getCtx() {
+    if (!enabled) return null;
+    if (!ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) ctx = new AudioCtx();
+    }
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+    return ctx;
+  }
+
+  function tone(freq, duration = 0.08, type = "sine", gainVal = 0.12, delay = 0, slideTo = null) {
+    const c = getCtx();
+    if (!c) return;
+    const start = c.currentTime + delay;
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, start);
+    if (slideTo) {
+      osc.frequency.exponentialRampToValueAtTime(slideTo, start + duration);
+    }
+    gain.gain.setValueAtTime(0.001, start);
+    gain.gain.linearRampToValueAtTime(gainVal, start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(start);
+    osc.stop(start + duration + 0.02);
+  }
+
+  return {
+    isEnabled: () => enabled,
+    setEnabled: (val) => {
+      enabled = !!val;
+      const onIcon = document.getElementById("icon-sound-on");
+      const offIcon = document.getElementById("icon-sound-off");
+      const btn = document.getElementById("btn-sound-toggle");
+      if (onIcon && offIcon && btn) {
+        onIcon.style.display = enabled ? "inline-block" : "none";
+        offIcon.style.display = enabled ? "none" : "inline-block";
+        btn.classList.toggle("muted", !enabled);
+      }
+    },
+    click: () => tone(520, 0.045, "sine", 0.08, 0, 620),
+    select: () => tone(587.33, 0.07, "triangle", 0.11, 0, 783.99),
+    flip: () => {
+      tone(380, 0.09, "triangle", 0.13, 0, 760);
+      tone(987.77, 0.12, "sine", 0.08, 0.06);
+    },
+    revealStep: (idx = 0) => {
+      const scale = [523.25, 587.33, 659.25, 698.46, 783.99, 880, 987.77, 1046.5];
+      const f = scale[idx % scale.length] * (1 + Math.floor(idx / scale.length) * 0.15);
+      tone(Math.min(f, 1800), 0.09, "sine", 0.08);
+    },
+    fanfare: () => {
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((n, i) => tone(n, 0.16, "triangle", 0.12, i * 0.065));
+    },
+    shuffle: () => {
+      for (let i = 0; i < 8; i++) {
+        const f = 260 + Math.random() * 420;
+        tone(f, 0.05, "triangle", 0.09, i * 0.048);
+      }
+      setTimeout(() => {
+        [523.25, 659.25, 783.99, 1046.5].forEach((n, i) => tone(n, 0.18, "sine", 0.13, i * 0.06));
+      }, 390);
+    },
+    swap: () => {
+      tone(440, 0.08, "sine", 0.12, 0, 660);
+      tone(660, 0.12, "triangle", 0.13, 0.07, 880);
+    },
+    pin: (pinned) => {
+      if (pinned) {
+        tone(659.25, 0.06, "sine", 0.11, 0);
+        tone(987.77, 0.11, "sine", 0.12, 0.05);
+      } else {
+        tone(783.99, 0.06, "sine", 0.1, 0);
+        tone(523.25, 0.1, "sine", 0.1, 0.05);
+      }
+    },
+    success: () => {
+      tone(587.33, 0.09, "sine", 0.11, 0);
+      tone(880, 0.18, "triangle", 0.13, 0.07);
+    },
+    warn: () => {
+      tone(280, 0.12, "sawtooth", 0.08, 0);
+      tone(220, 0.18, "sawtooth", 0.08, 0.1);
+    }
+  };
+})();
+
+/* ================= UI Feedback (Toast & Confirm Modal) ================= */
+const UI = (() => {
+  function toast(msg, type = "info") {
+    const container = document.getElementById("toast-container");
+    if (!container) return;
+    if (type === "warn") SoundFX.warn();
+    else if (type === "success") SoundFX.success();
+
+    const el = document.createElement("div");
+    el.className = `toast-msg ${type}`;
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.opacity = "0";
+      el.style.transition = "opacity 0.25s ease";
+      setTimeout(() => el.remove(), 260);
+    }, 2600);
+  }
+
+  let confirmResolver = null;
+  function confirmDialog(message, title = "확인") {
+    SoundFX.click();
+    return new Promise((resolve) => {
+      confirmResolver = resolve;
+      document.getElementById("confirm-title").textContent = title;
+      document.getElementById("confirm-message").textContent = message;
+      document.getElementById("modal-confirm").hidden = false;
+      setTimeout(() => lucide.createIcons(), 10);
+    });
+  }
+
+  function bindConfirmEvents() {
+    const close = (result) => {
+      document.getElementById("modal-confirm").hidden = true;
+      if (confirmResolver) {
+        const r = confirmResolver;
+        confirmResolver = null;
+        r(result);
+      }
+    };
+    document.getElementById("btn-confirm-ok").addEventListener("click", () => { SoundFX.click(); close(true); });
+    document.getElementById("btn-confirm-cancel").addEventListener("click", () => { SoundFX.click(); close(false); });
+    document.getElementById("btn-confirm-x").addEventListener("click", () => { SoundFX.click(); close(false); });
+  }
+
+  return { toast, confirmDialog, bindConfirmEvents };
+})();
+
+/* ================= utils.js ================= */
+function uuid() {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+function escapeHTML(str) {
+  return String(str ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function currentYearMonth() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+function formatDateTime(ts) {
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${y}.${m}.${day} ${hh}:${mm}`;
+}
+function fileToResizedBase64(file, maxSize = 200) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = maxSize; canvas.height = maxSize;
+        const ctx = canvas.getContext("2d");
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, maxSize, maxSize);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function classKeyOf(grade, classNum) { return `${grade || "?"}-${classNum || "?"}`; }
+
+/* ================= db.js (IndexedDB + In-Memory Fallback) ================= */
+const DB = (() => {
+  const DB_NAME = "seatShuffleDB"; const DB_VERSION = 2;
+  let dbPromise = null;
+  const memStore = { meta: {}, students: {}, history: {}, currentSeating: {}, swapLogs: {} };
+  let useMem = false;
+
+  function open() {
+    if (useMem) return Promise.resolve(null);
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve) => {
+      try {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "id" });
+          if (!db.objectStoreNames.contains("students")) db.createObjectStore("students", { keyPath: "id" });
+          if (!db.objectStoreNames.contains("history")) {
+            const h = db.createObjectStore("history", { keyPath: "id" });
+            h.createIndex("byYearMonth", "yearMonth", { unique: false });
+            h.createIndex("byClassKey", "classKey", { unique: false });
+          }
+          if (!db.objectStoreNames.contains("currentSeating")) db.createObjectStore("currentSeating", { keyPath: "id" });
+          if (!db.objectStoreNames.contains("swapLogs")) {
+            const s = db.createObjectStore("swapLogs", { keyPath: "id" });
+            s.createIndex("byClassKey", "classKey", { unique: false });
+          }
+        };
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = () => { useMem = true; resolve(null); };
+      } catch (err) {
+        useMem = true; resolve(null);
+      }
+    });
+    return dbPromise;
+  }
+  async function get(storeName, key) {
+    const db = await open();
+    if (!db) return memStore[storeName]?.[key] || null;
+    return new Promise((resolve) => {
+      const r = db.transaction(storeName, "readonly").objectStore(storeName).get(key);
+      r.onsuccess = () => resolve(r.result || null);
+      r.onerror = () => resolve(null);
+    });
+  }
+  async function getAll(storeName) {
+    const db = await open();
+    if (!db) return Object.values(memStore[storeName] || {});
+    return new Promise((resolve) => {
+      const r = db.transaction(storeName, "readonly").objectStore(storeName).getAll();
+      r.onsuccess = () => resolve(r.result || []);
+      r.onerror = () => resolve([]);
+    });
+  }
+  async function put(storeName, value) {
+    const db = await open();
+    if (!db) {
+      if (!memStore[storeName]) memStore[storeName] = {};
+      memStore[storeName][value.id] = value;
+      return value.id;
+    }
+    return new Promise((resolve) => {
+      const r = db.transaction(storeName, "readwrite").objectStore(storeName).put(value);
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => resolve(null);
+    });
+  }
+  async function del(storeName, key) {
+    const db = await open();
+    if (!db) { delete memStore[storeName]?.[key]; return; }
+    return new Promise((resolve) => {
+      const r = db.transaction(storeName, "readwrite").objectStore(storeName).delete(key);
+      r.onsuccess = () => resolve();
+      r.onerror = () => resolve();
+    });
+  }
+  async function clear(storeName) {
+    const db = await open();
+    if (!db) { memStore[storeName] = {}; return; }
+    return new Promise((resolve) => {
+      const r = db.transaction(storeName, "readwrite").objectStore(storeName).clear();
+      r.onsuccess = () => resolve();
+      r.onerror = () => resolve();
+    });
+  }
+  return { open, get, getAll, put, del, clear };
+})();
+
+/* ================= app.js (State) ================= */
+const App = (() => {
+  const state = {
+    grade: null, classNum: null, teacher: "", students: [],
+    deskLayout: { mode: "grid", sections: 3, rows: 5, seatsPerDesk: 2, freeDesks: [] },
+    freeEditMode: false, currentSeating: null,
+    showBoyMark: false, showEmptySeats: false, showNumber: false, showPhoto: false, requireSwapReason: true,
+    soundEnabled: true,
+    serverConfig: { url: "", roomKey: "default-class", authToken: "", autoSync: true, lastSyncedAt: null },
+  };
+  const deskDraft = { mode: "grid", sections: 3, rows: 5, seatsPerDesk: 2 };
+
+  function openModal(id) {
+    SoundFX.click();
+    document.getElementById(id).hidden = false;
+    setTimeout(() => lucide.createIcons(), 10);
+  }
+  function closeModal(id) {
+    SoundFX.click();
+    document.getElementById(id).hidden = true;
+  }
+
+  async function persistMeta() {
+    await DB.put("meta", {
+      id: "settings", grade: state.grade, classNum: state.classNum, teacher: state.teacher,
+      deskLayout: state.deskLayout, showBoyMark: state.showBoyMark, showEmptySeats: state.showEmptySeats,
+      showNumber: state.showNumber, showPhoto: state.showPhoto, requireSwapReason: state.requireSwapReason,
+      soundEnabled: state.soundEnabled,
+      serverConfig: state.serverConfig,
+    });
+  }
+
+  async function persistAllStudents() {
+    state.students.forEach((s, i) => (s.order = i));
+    await DB.clear("students");
+    for (const s of state.students) await DB.put("students", s);
+  }
+
+  function updateHeader() {
+    const title = document.getElementById("class-title");
+    const sub = document.getElementById("class-sub");
+    if (state.grade && state.classNum) title.textContent = `${state.grade}학년 ${state.classNum}반 자리바꾸기`;
+    else title.textContent = "자리바꾸기";
+    sub.textContent = `담임 ${state.teacher || "-"} · 학생 ${state.students.length}명`;
+    document.getElementById("empty-state").hidden = state.students.length > 0;
+    const countSpan = document.getElementById("settings-student-count");
+    if (countSpan) countSpan.textContent = state.students.length;
+  }
+
+  function updateFreeModeControls() {
+    const isFree = state.deskLayout.mode === "free";
+    const dockFree = document.getElementById("dock-free-controls");
+    if (dockFree) dockFree.hidden = !isFree;
+    const selSections = document.getElementById("sel-sections");
+    if (selSections) {
+      selSections.parentElement.style.opacity = isFree ? 0.4 : 1;
+      selSections.disabled = isFree;
+    }
+    const chkFreeEdit = document.getElementById("chk-free-edit");
+    if (chkFreeEdit) chkFreeEdit.checked = !!state.freeEditMode;
+  }
+
+  /* ---------------- 자리 교환 사유 모달 ---------------- */
+  let pendingSwap = null;
+  function openSwapReasonModal(seatIdA, seatIdB, studentA, studentB) {
+    pendingSwap = { seatIdA, seatIdB, studentA, studentB };
+    const nameA = studentA ? studentA.name : "빈자리";
+    const nameB = studentB ? studentB.name : "빈자리";
+    document.getElementById("swap-reason-summary").textContent = `${nameA} ↔ ${nameB}`;
+    const input = document.getElementById("swap-reason-input");
+    input.value = "";
+    openModal("modal-swap-reason");
+    setTimeout(() => input.focus(), 50);
+  }
+
+  function bindSwapReasonModalEvents() {
+    document.getElementById("btn-swap-reason-confirm").addEventListener("click", async () => {
+      if (!pendingSwap) return;
+      const input = document.getElementById("swap-reason-input");
+      const reason = input.value.trim();
+      if (!reason) { UI.toast("교환 사유를 입력해주세요.", "warn"); input.focus(); return; }
+      const { seatIdA, seatIdB, studentA, studentB } = pendingSwap;
+      Seating.swap(seatIdA, seatIdB);
+      await History.saveSwapLog({ seatIdA, seatIdB, studentA, studentB, reason });
+      pendingSwap = null;
+      document.getElementById("modal-swap-reason").hidden = true;
+      UI.toast("자리가 교환되었습니다.", "success");
+    });
+  }
+
+  /* ---------------- 데이터 백업/복원 ---------------- */
+  async function exportAllData() {
+    SoundFX.click();
+    const [meta, students, history, swapLogs, currentSeating] = await Promise.all([
+      DB.get("meta", "settings"), DB.getAll("students"), DB.getAll("history"), DB.getAll("swapLogs"), DB.get("currentSeating", "current")
+    ]);
+    const payload = { version: 1, exportedAt: Date.now(), meta, students, history, swapLogs, currentSeating };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const a = document.createElement("a"); a.href = url; a.download = `자리바꾸기_백업_${dateStr}.json`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    UI.toast("데이터 백업 파일을 다운로드했어요.", "success");
+  }
+
+  async function importAllData(file) {
+    let payload;
+    try { payload = JSON.parse(await file.text()); } catch (err) { UI.toast("올바른 백업 파일이 아니에요.", "warn"); return; }
+    if (!payload || !Array.isArray(payload.students)) { UI.toast("올바른 백업 파일이 아니에요.", "warn"); return; }
+    const ok = await UI.confirmDialog("현재 저장된 데이터를 백업 파일 내용으로 덮어쓸까요?", "데이터 복원");
+    if (!ok) return;
+
+    if (payload.meta) await DB.put("meta", payload.meta);
+    await DB.clear("students"); for (const s of payload.students) await DB.put("students", s);
+    await DB.clear("history"); for (const h of payload.history || []) await DB.put("history", h);
+    await DB.clear("swapLogs"); for (const l of payload.swapLogs || []) await DB.put("swapLogs", l);
+    if (payload.currentSeating) await DB.put("currentSeating", payload.currentSeating);
+    UI.toast("백업을 성공적으로 불러왔어요!", "success");
+    await init();
+    closeModal("modal-settings");
+  }
+
+  /* ---------------- 초기화 ---------------- */
+  async function init() {
+    const meta = await DB.get("meta", "settings");
+    if (meta) {
+      state.grade = meta.grade; state.classNum = meta.classNum; state.teacher = meta.teacher || "";
+      if (meta.deskLayout) {
+        state.deskLayout = {
+          mode: meta.deskLayout.mode || "grid",
+          sections: meta.deskLayout.sections || 3,
+          rows: meta.deskLayout.rows || 5,
+          seatsPerDesk: meta.deskLayout.seatsPerDesk || 2,
+          freeDesks: meta.deskLayout.freeDesks || []
+        };
+      }
+      state.showBoyMark = !!meta.showBoyMark; state.showEmptySeats = !!meta.showEmptySeats;
+      state.showNumber = !!meta.showNumber; state.showPhoto = !!meta.showPhoto;
+      state.requireSwapReason = meta.requireSwapReason !== false;
+      state.soundEnabled = meta.soundEnabled !== false;
+      if (meta.serverConfig) {
+        state.serverConfig = {
+          url: meta.serverConfig.url || "",
+          roomKey: meta.serverConfig.roomKey || "default-class",
+          authToken: meta.serverConfig.authToken || "",
+          autoSync: meta.serverConfig.autoSync !== false,
+          lastSyncedAt: meta.serverConfig.lastSyncedAt || null
+        };
+      }
+    }
+    SoundFX.setEnabled(state.soundEnabled);
+
+    const students = await DB.getAll("students");
+    state.students = students.sort((a, b) => (a.order || 0) - (b.order || 0));
+    const cs = await DB.get("currentSeating", "current");
+    if (cs) state.currentSeating = cs;
+
+    document.getElementById("chk-boy-mark").checked = state.showBoyMark;
+    document.getElementById("chk-show-empty").checked = state.showEmptySeats;
+    document.getElementById("chk-show-number").checked = state.showNumber;
+    document.getElementById("chk-show-photo").checked = state.showPhoto;
+    document.getElementById("chk-require-reason").checked = state.requireSwapReason;
+    document.getElementById("sel-sections").value = String(state.deskLayout.sections);
+    deskDraft.mode = state.deskLayout.mode; deskDraft.sections = state.deskLayout.sections;
+    deskDraft.rows = state.deskLayout.rows; deskDraft.seatsPerDesk = state.deskLayout.seatsPerDesk;
+
+    Layout.render(); Seating.render(false); Students.renderList();
+    updateHeader(); updateFreeModeControls();
+    lucide.createIcons();
+  }
+
+  let eventsBound = false;
+  function bindGlobalEvents() {
+    if (eventsBound) return;
+    eventsBound = true;
+
+    UI.bindConfirmEvents();
+    Students.bindEditModalEvents();
+    History.bindEvents();
+    Seating.bindTapEvents();
+    Layout.bindFreeDragEvents();
+    bindSwapReasonModalEvents();
+
+    // Sound toggle
+    document.getElementById("btn-sound-toggle").addEventListener("click", async () => {
+      state.soundEnabled = !state.soundEnabled;
+      SoundFX.setEnabled(state.soundEnabled);
+      if (state.soundEnabled) SoundFX.click();
+      await persistMeta();
+      UI.toast(state.soundEnabled ? "효과음이 켜졌어요 🔊" : "효과음이 꺼졌어요 🔇");
+    });
+
+    // Mobile dock toggle
+    const dock = document.getElementById("dock");
+    const dockOverlay = document.getElementById("dock-overlay");
+    const closeDock = () => { dock.classList.remove("open"); dockOverlay.classList.remove("open"); };
+    document.getElementById("btn-dock-toggle").addEventListener("click", () => {
+      SoundFX.click();
+      dock.classList.toggle("open");
+      dockOverlay.classList.toggle("open");
+    });
+    dockOverlay.addEventListener("click", closeDock);
+
+    document.getElementById("btn-open-settings").addEventListener("click", () => {
+      document.getElementById("input-grade").value = state.grade || "";
+      document.getElementById("input-class").value = state.classNum || "";
+      document.getElementById("input-teacher").value = state.teacher || "";
+      document.getElementById("input-server-url").value = state.serverConfig.url || "";
+      document.getElementById("input-sync-room").value = state.serverConfig.roomKey || classKeyOf(state.grade, state.classNum);
+      document.getElementById("input-sync-token").value = state.serverConfig.authToken || "";
+      document.getElementById("chk-auto-sync").checked = state.serverConfig.autoSync !== false;
+      ServerSync.updateStatusUI();
+      Students.renderList(); openModal("modal-settings");
+    });
+    document.getElementById("btn-empty-settings").addEventListener("click", () => document.getElementById("btn-open-settings").click());
+    document.getElementById("btn-load-sample").addEventListener("click", () => Students.loadSampleStudents());
+    document.getElementById("btn-sample-in-settings").addEventListener("click", () => Students.loadSampleStudents());
+
+    document.getElementById("btn-open-history").addEventListener("click", async () => {
+      await History.renderList(); await History.renderSwapLogList(); openModal("modal-history");
+    });
+    document.querySelectorAll(".close-modal").forEach(btn => btn.addEventListener("click", () => closeModal(btn.dataset.close)));
+    document.querySelectorAll(".modal-overlay").forEach(overlay => overlay.addEventListener("click", e => {
+      if (e.target === overlay && overlay.id !== "modal-confirm") closeModal(overlay.id);
+    }));
+
+    // Students actions
+    document.getElementById("btn-add-student").addEventListener("click", addStudent);
+    document.getElementById("input-new-name").addEventListener("keydown", (e) => {
+      if (e.isComposing) return;
+      if (e.key === "Enter") { e.preventDefault(); addStudent(); }
+    });
+    async function addStudent() {
+      const nameInput = document.getElementById("input-new-name");
+      const genderInput = document.getElementById("input-new-gender");
+      await Students.add(nameInput.value, genderInput.value);
+      nameInput.value = ""; nameInput.focus();
+    }
+    document.getElementById("input-excel").addEventListener("change", (e) => {
+      const file = e.target.files[0]; if (file) Students.importFromExcel(file); e.target.value = "";
+    });
+    document.getElementById("btn-clear-students").addEventListener("click", () => Students.clearAll());
+    document.getElementById("btn-download-template").addEventListener("click", () => Students.downloadExcelTemplate());
+
+    document.getElementById("btn-export-data").addEventListener("click", () => exportAllData());
+    document.getElementById("input-import-data").addEventListener("change", (e) => { const file = e.target.files[0]; if (file) importAllData(file); e.target.value = ""; });
+
+    document.getElementById("btn-settings-save").addEventListener("click", async () => {
+      state.grade = document.getElementById("input-grade").value.trim();
+      state.classNum = document.getElementById("input-class").value.trim();
+      state.teacher = document.getElementById("input-teacher").value.trim();
+      ServerSync.readConfigFromInputs();
+      await persistMeta(); await persistAllStudents();
+      ServerSync.updateStatusUI();
+      updateHeader(); Seating.renderCurrentAssignments();
+      closeModal("modal-settings");
+      UI.toast("설정이 저장되었습니다.", "success");
+      if (state.serverConfig.autoSync && state.serverConfig.url) {
+        ServerSync.pushToServer(true);
+      }
+    });
+
+    document.getElementById("btn-shuffle").addEventListener("click", () => { closeDock(); Seating.shuffleAssign(); });
+    document.getElementById("btn-reveal-all").addEventListener("click", () => { closeDock(); Seating.revealAll(); });
+    document.getElementById("btn-hide-all").addEventListener("click", () => { closeDock(); Seating.hideAll(); });
+
+    // Layout modal
+    document.getElementById("btn-desk-layout").addEventListener("click", () => {
+      closeDock();
+      deskDraft.mode = state.deskLayout.mode; deskDraft.sections = state.deskLayout.sections;
+      deskDraft.rows = state.deskLayout.rows; deskDraft.seatsPerDesk = state.deskLayout.seatsPerDesk;
+      refreshDeskModalUI(); openModal("modal-desk");
+    });
+    document.querySelectorAll(".mode-tab-btn").forEach((btn) => btn.addEventListener("click", () => { SoundFX.click(); deskDraft.mode = btn.dataset.mode; refreshDeskModalUI(); }));
+    document.querySelectorAll(".seg-btn").forEach((btn) => btn.addEventListener("click", () => { SoundFX.click(); deskDraft.seatsPerDesk = parseInt(btn.dataset.seatsPerDesk, 10); refreshDeskModalUI(); }));
+    document.querySelectorAll(".step-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        SoundFX.click();
+        const key = btn.dataset.step; const dir = parseInt(btn.dataset.dir, 10);
+        const min = 1, max = key === "sections" ? 8 : 12;
+        deskDraft[key] = Math.min(max, Math.max(min, deskDraft[key] + dir)); refreshDeskModalUI();
+      });
+    });
+    function refreshDeskModalUI() {
+      document.querySelectorAll(".mode-tab-btn").forEach(b => b.classList.toggle("active", b.dataset.mode === deskDraft.mode));
+      document.querySelectorAll(".seg-btn").forEach(b => b.classList.toggle("active", parseInt(b.dataset.seatsPerDesk, 10) === deskDraft.seatsPerDesk));
+      document.getElementById("desk-grid-controls").hidden = deskDraft.mode !== "grid";
+      document.getElementById("desk-free-controls").hidden = deskDraft.mode !== "free";
+      document.getElementById("val-sections").textContent = deskDraft.sections;
+      document.getElementById("val-rows").textContent = deskDraft.rows;
+      document.getElementById("val-total-seats").textContent = deskDraft.sections * deskDraft.rows * deskDraft.seatsPerDesk;
+      document.getElementById("val-total-seats-free").textContent = state.deskLayout.freeDesks.length;
+    }
+    document.getElementById("btn-desk-apply").addEventListener("click", async () => {
+      if (deskDraft.mode === "free") {
+        if (state.deskLayout.freeDesks.length === 0) state.deskLayout.freeDesks = Layout.generateFreeDesksFromGrid();
+        state.deskLayout.mode = "free";
+      } else {
+        state.deskLayout.mode = "grid"; state.deskLayout.sections = deskDraft.sections;
+        state.deskLayout.rows = deskDraft.rows; state.deskLayout.seatsPerDesk = deskDraft.seatsPerDesk;
+        state.freeEditMode = false;
+        document.getElementById("sel-sections").value = String(state.deskLayout.sections);
+      }
+      await persistMeta(); Layout.render(); Seating.render(true); updateFreeModeControls(); closeModal("modal-desk");
+      UI.toast("책상 배치가 적용되었어요.", "success");
+    });
+    document.getElementById("btn-free-add-in-modal").addEventListener("click", () => { Layout.addFreeDesk(); refreshDeskModalUI(); });
+    document.getElementById("btn-free-reset-in-modal").addEventListener("click", () => {
+      SoundFX.click();
+      state.deskLayout.freeDesks = Layout.generateFreeDesksFromGrid();
+      persistMeta(); Layout.render(); Seating.render(false); refreshDeskModalUI();
+      UI.toast("현재 분단/줄 격자 기준으로 책상을 정렬했어요.");
+    });
+    document.getElementById("btn-free-clear-in-modal").addEventListener("click", async () => {
+      await Layout.clearFreeDesks(); refreshDeskModalUI();
+    });
+
+    document.getElementById("chk-free-edit").addEventListener("change", (e) => {
+      SoundFX.click();
+      state.freeEditMode = e.target.checked;
+      if (state.freeEditMode) Seating.clearSelection();
+      Layout.refreshFreeEditAttrs();
+      UI.toast(state.freeEditMode ? "책상을 드래그하여 위치를 이동하세요." : "책상 위치 편집을 종료했어요.");
+    });
+    document.getElementById("btn-add-desk-dock").addEventListener("click", () => Layout.addFreeDesk());
+
+    document.getElementById("sel-sections").addEventListener("change", async (e) => {
+      if (state.deskLayout.mode !== "grid") return;
+      SoundFX.click();
+      state.deskLayout.sections = parseInt(e.target.value, 10);
+      await persistMeta(); Layout.render(); Seating.render(true);
+    });
+
+    const toggle = (id, key) => document.getElementById(id).addEventListener("change", async (e) => {
+      SoundFX.click();
+      state[key] = e.target.checked; await persistMeta(); Seating.renderCurrentAssignments();
+    });
+    toggle("chk-boy-mark", "showBoyMark");
+    toggle("chk-show-empty", "showEmptySeats");
+    toggle("chk-show-number", "showNumber");
+    toggle("chk-show-photo", "showPhoto");
+    toggle("chk-require-reason", "requireSwapReason");
+
+    document.getElementById("btn-save-history").addEventListener("click", () => { closeDock(); History.saveCurrentAsHistory(); });
+    document.getElementById("btn-print-board").addEventListener("click", () => { closeDock(); Print.printBoard(); });
+    document.getElementById("btn-print-teacher").addEventListener("click", () => { closeDock(); Print.printTeacher(); });
+  }
+
+  return { state, openModal, closeModal, persistMeta, persistAllStudents, updateHeader, updateFreeModeControls, openSwapReasonModal, init, bindGlobalEvents };
+})();
+
+const Layout = (() => {
+  function seatMarkup(showDeskControls) {
+    return `
+      <div class="seat-inner">
+        <div class="seat-face seat-cover">
+          <div class="q">?</div>
+          <div class="tap-hint">눌러서 확인</div>
+        </div>
+        <div class="seat-face seat-face-name">
+          <span class="seat-badge"></span>
+          <button class="seat-pin-btn" type="button" title="이 학생 자리 고정/해제"><i data-lucide="pin" class="w-3 h-3"></i></button>
+          <span class="seat-number"></span>
+          <img class="seat-photo" alt="" hidden />
+          <span class="seat-name"></span>
+        </div>
+      </div>
+      ${showDeskControls ? `
+        <button class="seat-delete-btn" type="button" title="책상 삭제"><i data-lucide="x" class="w-4 h-4"></i></button>
+        <button class="seat-lock-btn" type="button" title="책상 위치 고정/해제"><i data-lucide="unlock" class="w-4 h-4 unlock-icon"></i><i data-lucide="lock" class="w-4 h-4 lock-icon" style="display:none;"></i></button>
+      ` : ""}
+    `;
+  }
+
+  function buildSeatIds() {
+    const dl = App.state.deskLayout;
+    if (dl.mode === "free") return dl.freeDesks.map(d => d.id);
+    const ids = [];
+    for (let sec = 0; sec < dl.sections; sec++) {
+      for (let r = 0; r < dl.rows; r++) {
+        for (let p = 0; p < dl.seatsPerDesk; p++) ids.push(`sec${sec}-row${r}-p${p}`);
+      }
+    }
+    return ids;
+  }
+
+  function generateFreeDesksFromGrid() {
+    const { sections, rows, seatsPerDesk } = App.state.deskLayout;
+    const desks = []; const sectionW = 92 / sections;
+    for (let sec = 0; sec < sections; sec++) {
+      for (let r = 0; r < rows; r++) {
+        for (let p = 0; p < seatsPerDesk; p++) {
+          let x = seatsPerDesk === 2
+            ? 4 + sec * sectionW + (p === 0 ? sectionW * 0.1 : sectionW * 0.52)
+            : 4 + sec * sectionW + sectionW * 0.25;
+          const y = 6 + r * (78 / Math.max(rows - 1, 1));
+          desks.push({ id: `sec${sec}-row${r}-p${p}`, x: Math.min(86, Math.max(2, x)), y: Math.min(84, Math.max(2, y)), locked: false });
+        }
+      }
+    }
+    return desks;
+  }
+
+  function addFreeDesk() {
+    SoundFX.click();
+    const dl = App.state.deskLayout; const id = "free-" + uuid();
+    const n = dl.freeDesks.length; const x = 8 + ((n * 13) % 76), y = 8 + ((n * 15) % 74);
+    dl.freeDesks.push({ id, x, y, locked: false });
+    App.persistMeta(); render(); Seating.render(false);
+    UI.toast("새 책상이 추가되었어요.");
+  }
+
+  function removeFreeDesk(seatId) {
+    SoundFX.click();
+    App.state.deskLayout.freeDesks = App.state.deskLayout.freeDesks.filter(d => d.id !== seatId);
+    App.persistMeta(); render(); Seating.render(false);
+  }
+
+  async function clearFreeDesks() {
+    const ok = await UI.confirmDialog("자유배치 책상을 모두 지울까요?", "책상 전체 비우기");
+    if (!ok) return;
+    App.state.deskLayout.freeDesks = [];
+    await App.persistMeta(); render(); Seating.render(false);
+    UI.toast("모든 자유배치 책상을 비웠어요.");
+  }
+
+  function checkScrollOverflow() {
+    const stage = document.querySelector(".stage");
+    const hint = document.getElementById("scroll-hint");
+    if (!stage || !hint) return;
+    hint.hidden = stage.scrollWidth <= stage.clientWidth + 12;
+  }
+
+  function render() {
+    const grid = document.getElementById("seat-grid"); grid.innerHTML = "";
+    const dl = App.state.deskLayout;
+    if (dl.mode === "free") {
+      grid.classList.add("free-mode"); grid.classList.toggle("edit-desk-mode", !!App.state.freeEditMode);
+      dl.freeDesks.forEach((desk) => {
+        const seat = document.createElement("div");
+        seat.className = "seat free-seat" + (desk.locked ? " locked" : ""); seat.dataset.seatId = desk.id;
+        seat.style.left = desk.x + "%"; seat.style.top = desk.y + "%";
+        seat.innerHTML = seatMarkup(true);
+        if (desk.locked) {
+          seat.querySelector('.unlock-icon').style.display = 'none';
+          seat.querySelector('.lock-icon').style.display = 'block';
+        }
+        grid.appendChild(seat);
+      });
+      if (document.getElementById("val-total-seats")) document.getElementById("val-total-seats").textContent = dl.freeDesks.length;
+    } else {
+      grid.classList.remove("free-mode", "edit-desk-mode");
+      for (let sec = 0; sec < dl.sections; sec++) {
+        const col = document.createElement("div"); col.className = "section-col";
+        for (let r = 0; r < dl.rows; r++) {
+          const rowEl = document.createElement("div"); rowEl.className = "desk-row";
+          for (let p = 0; p < dl.seatsPerDesk; p++) {
+            const seat = document.createElement("div"); seat.className = "seat"; seat.dataset.seatId = `sec${sec}-row${r}-p${p}`;
+            seat.innerHTML = seatMarkup(false); rowEl.appendChild(seat);
+          }
+          col.appendChild(rowEl);
+        }
+        grid.appendChild(col);
+      }
+      if (document.getElementById("val-total-seats")) document.getElementById("val-total-seats").textContent = dl.sections * dl.rows * dl.seatsPerDesk;
+    }
+    if (App.updateFreeModeControls) App.updateFreeModeControls();
+    setTimeout(() => { lucide.createIcons(); checkScrollOverflow(); }, 10);
+  }
+
+  let dragCtx = null;
+  function bindFreeDragEvents() {
+    const grid = document.getElementById("seat-grid");
+    window.addEventListener("resize", checkScrollOverflow);
+    grid.addEventListener("pointerdown", (e) => {
+      if (!App.state.freeEditMode || App.state.deskLayout.mode !== "free") return;
+      if (e.target.closest(".seat-delete-btn") || e.target.closest(".seat-lock-btn")) return;
+      const seat = e.target.closest(".seat.free-seat");
+      if (!seat || seat.classList.contains("locked")) return;
+      e.preventDefault();
+      const gridRect = grid.getBoundingClientRect();
+      const seatRect = seat.getBoundingClientRect();
+      dragCtx = {
+        seat,
+        seatId: seat.dataset.seatId,
+        gridRect,
+        offsetX: e.clientX - seatRect.left,
+        offsetY: e.clientY - seatRect.top,
+        maxXPct: Math.max(5, ((gridRect.width - seatRect.width) / gridRect.width) * 100),
+        maxYPct: Math.max(5, ((gridRect.height - seatRect.height) / gridRect.height) * 100),
+        x: null, y: null
+      };
+      seat.classList.add("dragging-pos");
+      try { seat.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    grid.addEventListener("pointermove", (e) => {
+      if (!dragCtx) return;
+      const rect = dragCtx.gridRect;
+      let xPct = ((e.clientX - rect.left - dragCtx.offsetX) / rect.width) * 100;
+      let yPct = ((e.clientY - rect.top - dragCtx.offsetY) / rect.height) * 100;
+      xPct = Math.min(dragCtx.maxXPct, Math.max(0, xPct));
+      yPct = Math.min(dragCtx.maxYPct, Math.max(0, yPct));
+      dragCtx.seat.style.left = xPct + "%"; dragCtx.seat.style.top = yPct + "%";
+      dragCtx.x = xPct; dragCtx.y = yPct;
+    });
+    const endDrag = () => {
+      if (!dragCtx) return;
+      dragCtx.seat.classList.remove("dragging-pos");
+      if (dragCtx.x != null) {
+        const desk = App.state.deskLayout.freeDesks.find(d => d.id === dragCtx.seatId);
+        if (desk) { desk.x = dragCtx.x; desk.y = dragCtx.y; App.persistMeta(); SoundFX.click(); }
+      }
+      dragCtx = null;
+    };
+    grid.addEventListener("pointerup", endDrag); grid.addEventListener("pointercancel", endDrag);
+
+    grid.addEventListener("click", (e) => {
+      const delBtn = e.target.closest(".seat-delete-btn");
+      if (delBtn && App.state.freeEditMode) { removeFreeDesk(delBtn.closest(".seat").dataset.seatId); return; }
+      const lockBtn = e.target.closest(".seat-lock-btn");
+      if (lockBtn && App.state.freeEditMode) toggleFreeDeskLock(lockBtn.closest(".seat").dataset.seatId);
+    });
+  }
+
+  function toggleFreeDeskLock(seatId) {
+    const desk = App.state.deskLayout.freeDesks.find(d => d.id === seatId);
+    if (!desk) return;
+    desk.locked = !desk.locked; App.persistMeta();
+    SoundFX.pin(desk.locked);
+    const seat = document.querySelector(`.seat[data-seat-id="${seatId}"]`);
+    if (seat) {
+      seat.classList.toggle("locked", desk.locked);
+      seat.querySelector('.unlock-icon').style.display = desk.locked ? 'none' : 'block';
+      seat.querySelector('.lock-icon').style.display = desk.locked ? 'block' : 'none';
+    }
+  }
+
+  function refreshFreeEditAttrs() {
+    const grid = document.getElementById("seat-grid");
+    if (grid) grid.classList.toggle("edit-desk-mode", !!App.state.freeEditMode);
+  }
+
+  function orderedSeatIdsByProximity() {
+    const dl = App.state.deskLayout;
+    if (dl.mode === "free") return dl.freeDesks.slice().sort((a, b) => a.y - b.y || a.x - b.x).map(d => d.id);
+    const ids = [];
+    for (let r = 0; r < dl.rows; r++) {
+      for (let sec = 0; sec < dl.sections; sec++) {
+        for (let p = 0; p < dl.seatsPerDesk; p++) ids.push(`sec${sec}-row${r}-p${p}`);
+      }
+    }
+    return ids;
+  }
+
+  return { buildSeatIds, orderedSeatIdsByProximity, render, addFreeDesk, removeFreeDesk, clearFreeDesks, toggleFreeDeskLock, generateFreeDesksFromGrid, bindFreeDragEvents, refreshFreeEditAttrs };
+})();
+
+const Seating = (() => {
+  let selectedSeatId = null;
+  let revealTimers = [];
+
+  function clearRevealTimers() {
+    revealTimers.forEach(t => clearTimeout(t));
+    revealTimers = [];
+  }
+
+  function clearSelection() {
+    selectedSeatId = null;
+    document.querySelectorAll('.seat.selected').forEach(el => el.classList.remove('selected'));
+    const banner = document.getElementById("swap-banner");
+    if (banner) banner.hidden = true;
+  }
+
+  function shuffleAssign() {
+    clearRevealTimers();
+    clearSelection();
+
+    const seatIds = Layout.buildSeatIds();
+    const orderedSeats = Layout.orderedSeatIdsByProximity();
+    const total = seatIds.length; const students = App.state.students;
+
+    if (students.length === 0) {
+      UI.toast("먼저 학생 명단을 등록하거나 샘플 학급을 불러와주세요!", "warn");
+      return;
+    }
+    if (students.length > total) {
+      UI.toast(`학생 수(${students.length}명)가 좌석 수(${total}석)보다 많아요. 책상 수를 늘려주세요!`, "warn");
+      return;
+    }
+
+    SoundFX.shuffle();
+
+    const prevCs = App.state.currentSeating;
+    const pinnedStudentIds = (prevCs && prevCs.pinnedStudentIds) || [];
+    const pinnedAssignments = {};
+    if (prevCs && prevCs.assignment) {
+      Object.entries(prevCs.assignment).forEach(([id, sid]) => {
+        if (sid && pinnedStudentIds.includes(sid) && seatIds.includes(id)) pinnedAssignments[sid] = id;
+      });
+    }
+
+    const stillPinnedIds = Object.keys(pinnedAssignments);
+    const studentsToShuffle = shuffle(students.filter((s) => !stillPinnedIds.includes(s.id)));
+    const reserved = new Set(Object.values(pinnedAssignments));
+    const availableSeats = orderedSeats.filter((id) => !reserved.has(id));
+    const activeSeats = availableSeats.slice(0, studentsToShuffle.length);
+
+    const assignment = {}; seatIds.forEach((id) => (assignment[id] = null));
+    stillPinnedIds.forEach((sid) => { assignment[pinnedAssignments[sid]] = sid; });
+    studentsToShuffle.forEach((s, i) => { assignment[activeSeats[i]] = s.id; });
+
+    App.state.currentSeating = {
+      id: "current",
+      assignment,
+      revealed: stillPinnedIds.map((sid) => pinnedAssignments[sid]),
+      hasShuffled: true,
+      pinnedStudentIds: stillPinnedIds
+    };
+    render(false);
+
+    // Wiggle animation on unrevealed cards
+    document.querySelectorAll(".seat:not(.pinned)").forEach(el => {
+      el.classList.remove("shuffling");
+      void el.offsetWidth;
+      el.classList.add("shuffling");
+      setTimeout(() => el.classList.remove("shuffling"), 750);
+    });
+    UI.toast("자리가 섞였어요! 카드를 클릭하거나 '전체 공개'를 눌러보세요 🎲");
+  }
+
+  function revealSeat(seatId) {
+    const cs = App.state.currentSeating; if (!cs) return;
+    if (!cs.hasShuffled) {
+      UI.toast("우측 메뉴의 '자리 배치' 버튼을 먼저 눌러주세요!", "warn");
+      return;
+    }
+    if (!cs.revealed.includes(seatId)) {
+      cs.revealed.push(seatId);
+      SoundFX.flip();
+    }
+    renderSeat(seatId); persist();
+  }
+
+  function revealAll() {
+    const cs = App.state.currentSeating;
+    if (!cs || !cs.hasShuffled) {
+      UI.toast("먼저 '자리 배치' 버튼을 눌러 자리를 섞어주세요!", "warn");
+      return;
+    }
+    clearRevealTimers();
+    const keys = Object.keys(cs.assignment).filter(id => cs.assignment[id] || App.state.showEmptySeats);
+    const unrevealed = keys.filter(id => !cs.revealed.includes(id));
+    if (unrevealed.length === 0) {
+      UI.toast("이미 모든 자리가 공개되어 있어요.");
+      return;
+    }
+    unrevealed.forEach((id, i) => {
+      const timer = setTimeout(() => {
+        if (!cs.revealed.includes(id)) cs.revealed.push(id);
+        SoundFX.revealStep(i);
+        renderSeat(id);
+        if (i === unrevealed.length - 1) {
+          SoundFX.fanfare();
+          persist();
+        }
+      }, i * 50);
+      revealTimers.push(timer);
+    });
+    persist();
+  }
+
+  function hideAll() {
+    const cs = App.state.currentSeating;
+    if (!cs || !cs.hasShuffled) return;
+    clearRevealTimers();
+    clearSelection();
+    SoundFX.click();
+    const pinnedSeats = [];
+    if (cs.pinnedStudentIds && cs.assignment) {
+      Object.entries(cs.assignment).forEach(([seatId, sid]) => {
+        if (sid && cs.pinnedStudentIds.includes(sid)) pinnedSeats.push(seatId);
+      });
+    }
+    cs.revealed = pinnedSeats;
+    Layout.buildSeatIds().forEach(renderSeat);
+    persist();
+    UI.toast("고정된 자리를 제외하고 모두 가렸어요.");
+  }
+
+  function swap(seatIdA, seatIdB) {
+    const cs = App.state.currentSeating; if (!cs || seatIdA === seatIdB) return;
+    const tmp = cs.assignment[seatIdA]; cs.assignment[seatIdA] = cs.assignment[seatIdB]; cs.assignment[seatIdB] = tmp;
+    SoundFX.swap();
+    renderSeat(seatIdA); renderSeat(seatIdB); persist();
+  }
+
+  function requestSwap(seatIdA, seatIdB) {
+    const cs = App.state.currentSeating; if (!cs || seatIdA === seatIdB) return;
+    if (!cs.hasShuffled || !App.state.requireSwapReason) {
+      swap(seatIdA, seatIdB);
+      UI.toast("자리가 교환되었습니다.", "success");
+      return;
+    }
+    const studentA = App.state.students.find(s => s.id === cs.assignment[seatIdA]);
+    const studentB = App.state.students.find(s => s.id === cs.assignment[seatIdB]);
+    App.openSwapReasonModal(seatIdA, seatIdB, studentA, studentB);
+  }
+
+  function togglePin(seatId) {
+    const cs = App.state.currentSeating; if (!cs) return;
+    const studentId = cs.assignment[seatId]; if (!studentId) return;
+    cs.pinnedStudentIds = cs.pinnedStudentIds || [];
+    const idx = cs.pinnedStudentIds.indexOf(studentId);
+    const willPin = idx < 0;
+    if (idx >= 0) cs.pinnedStudentIds.splice(idx, 1); else cs.pinnedStudentIds.push(studentId);
+    SoundFX.pin(willPin);
+    renderSeat(seatId); persist();
+    const student = App.state.students.find(s => s.id === studentId);
+    if (student) {
+      UI.toast(willPin ? `${student.name} 학생 자리를 고정했어요 📌` : `${student.name} 학생 자리 고정을 해제했어요.`);
+    }
+  }
+
+  function renderSeat(seatId) {
+    const el = document.querySelector(`.seat[data-seat-id="${seatId}"]`); if (!el) return;
+    const cs = App.state.currentSeating;
+    const student = cs && cs.assignment[seatId] ? App.state.students.find(s => s.id === cs.assignment[seatId]) : null;
+    const revealed = cs && cs.revealed.includes(seatId);
+
+    el.classList.toggle("revealed", !!revealed);
+    el.classList.toggle("empty", !student);
+    el.classList.toggle("male", !!(student && student.gender === "M" && App.state.showBoyMark));
+    el.classList.toggle("pinned", !!(cs && cs.pinnedStudentIds && student && cs.pinnedStudentIds.includes(student.id)));
+
+    const nameEl = el.querySelector(".seat-name"); const badgeEl = el.querySelector(".seat-badge");
+    const numberEl = el.querySelector(".seat-number"); const photoEl = el.querySelector(".seat-photo");
+
+    if (student) {
+      nameEl.textContent = student.name;
+      badgeEl.innerHTML = student.role === "president" ? '<i data-lucide="crown" class="w-4 h-4"></i>' : student.role === "vice" ? '<i data-lucide="award" class="w-4 h-4"></i>' : "";
+      const idx = App.state.students.findIndex((s) => s.id === student.id);
+      numberEl.textContent = App.state.showNumber ? String(idx + 1) : "";
+      if (App.state.showPhoto && student.photo) { photoEl.src = student.photo; photoEl.hidden = false; } else { photoEl.hidden = true; }
+    } else {
+      nameEl.textContent = revealed ? "빈자리" : "";
+      badgeEl.innerHTML = ""; numberEl.textContent = ""; photoEl.hidden = true;
+    }
+    el.style.visibility = (cs && cs.hasShuffled && !student && !App.state.showEmptySeats) ? "hidden" : "visible";
+    setTimeout(() => lucide.createIcons({root: el}), 0);
+  }
+
+  function render(resetCover) {
+    clearRevealTimers();
+    const seatIds = Layout.buildSeatIds();
+    if (!App.state.currentSeating) {
+      App.state.currentSeating = { id: "current", assignment: {}, revealed: [], hasShuffled: false };
+      seatIds.forEach((id) => (App.state.currentSeating.assignment[id] = null));
+    }
+    seatIds.forEach((id) => { if (!(id in App.state.currentSeating.assignment)) App.state.currentSeating.assignment[id] = null; });
+    if (resetCover) App.state.currentSeating.revealed = [];
+    seatIds.forEach(renderSeat); persist();
+  }
+
+  function persist() { if (App.state.currentSeating) DB.put("currentSeating", App.state.currentSeating); }
+
+  function bindTapEvents() {
+    const grid = document.getElementById("seat-grid");
+    document.getElementById("btn-cancel-swap").addEventListener("click", () => {
+      SoundFX.click();
+      clearSelection();
+    });
+
+    grid.addEventListener("click", (e) => {
+      if (App.state.freeEditMode) return;
+
+      const pinBtn = e.target.closest(".seat-pin-btn");
+      if (pinBtn) { const seat = pinBtn.closest(".seat"); if (seat) togglePin(seat.dataset.seatId); return; }
+
+      const cover = e.target.closest(".seat-cover");
+      if (cover) { const seat = cover.closest(".seat"); if (seat) revealSeat(seat.dataset.seatId); return; }
+
+      const seat = e.target.closest(".seat");
+      if (!seat) return;
+      const targetId = seat.dataset.seatId;
+
+      if (selectedSeatId === null) {
+        SoundFX.select();
+        selectedSeatId = targetId;
+        seat.classList.add("selected");
+        const cs = App.state.currentSeating;
+        const st = cs && cs.assignment[targetId] ? App.state.students.find(s => s.id === cs.assignment[targetId]) : null;
+        const label = st ? `'${st.name}' 학생과 교환할 다른 자리를 클릭하세요` : `선택한 빈자리와 교환할 자리를 클릭하세요`;
+        document.getElementById("swap-banner-text").textContent = label;
+        document.getElementById("swap-banner").hidden = false;
+      } else if (selectedSeatId === targetId) {
+        SoundFX.click();
+        clearSelection();
+      } else {
+        const firstId = selectedSeatId;
+        clearSelection();
+        requestSwap(firstId, targetId);
+      }
+    });
+  }
+
+  return { shuffleAssign, revealSeat, revealAll, hideAll, clearSelection, swap, render, renderSeat, renderCurrentAssignments: () => Layout.buildSeatIds().forEach(renderSeat), bindTapEvents, persist };
+})();
+
+const History = (() => {
+  async function saveCurrentAsHistory() {
+    if (!App.state.currentSeating || !App.state.currentSeating.hasShuffled) {
+      UI.toast("먼저 자리 배치를 진행해주세요.", "warn");
+      return;
+    }
+    const yearMonth = currentYearMonth(), classKey = classKeyOf(App.state.grade, App.state.classNum);
+    await DB.put("history", {
+      id: uuid(), yearMonth, classKey, grade: App.state.grade, classNum: App.state.classNum, createdAt: Date.now(),
+      deskLayout: JSON.parse(JSON.stringify(App.state.deskLayout)),
+      assignment: { ...App.state.currentSeating.assignment },
+      studentsSnapshot: JSON.parse(JSON.stringify(App.state.students)),
+    });
+    UI.toast(`${yearMonth} 기준 자리 배치를 기록에 저장했어요!`, "success");
+    if (App.state.serverConfig && App.state.serverConfig.autoSync) {
+      ServerSync.pushToServer(true);
+    }
+  }
+
+  function buildPreviewHTML(record) {
+    const dl = record.deskLayout || {};
+    const studentIn = (id) => record.studentsSnapshot.find(s => s.id === id) || null;
+    let html = "";
+    if (dl.mode === "free") {
+      html = `<div style="position:relative; width:100%; height:240px; margin-top:8px; border:1px dashed rgba(120,120,150,0.35); border-radius:12px; background:rgba(255,255,255,0.4);">`;
+      (dl.freeDesks || []).forEach((desk) => {
+        const sid = record.assignment[desk.id]; const student = sid ? studentIn(sid) : null;
+        html += `<div class="seat revealed" style="position:absolute; left:${desk.x}%; top:${desk.y}%; width:62px; height:48px;"><div class="seat-inner" style="transform:none;">
+          <div class="seat-face seat-face-name" style="transform:none; padding:3px;">
+            <span class="seat-badge" style="font-size:10px;">${student && student.role === "president" ? '<i data-lucide="crown" class="w-3 h-3"></i>' : student && student.role === "vice" ? '<i data-lucide="award" class="w-3 h-3"></i>' : ""}</span>
+            <span class="seat-name" style="font-size:11px;">${student ? escapeHTML(student.name) : ""}</span>
+          </div></div></div>`;
+      });
+      html += `</div>`;
+    } else {
+      const { sections, rows } = dl; const seatsPerDesk = dl.seatsPerDesk || 2;
+      html = `<div style="display:flex; gap:12px; justify-content:center; padding: 8px 4px;">`;
+      for (let sec = 0; sec < sections; sec++) {
+        html += `<div style="display:flex; flex-direction:column; gap:6px;">`;
+        for (let r = 0; r < rows; r++) {
+          html += `<div style="display:flex; gap:4px;">`;
+          for (let p = 0; p < seatsPerDesk; p++) {
+            const sid = record.assignment[`sec${sec}-row${r}-p${p}`]; const student = sid ? studentIn(sid) : null;
+            html += `<div style="width:64px; height:46px; border-radius:8px; background:#DFF6E6; border:1px solid #fff; display:flex; align-items:center; justify-content:center; position:relative; padding:3px; font-size:11.5px; font-weight:700;">
+              <span style="position:absolute; top:2px; left:3px; font-size:10px; color:#FF8E72;">${student && student.role === "president" ? '<i data-lucide="crown" class="w-3 h-3"></i>' : student && student.role === "vice" ? '<i data-lucide="award" class="w-3 h-3"></i>' : ""}</span>
+              <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${student ? escapeHTML(student.name) : ""}</span>
+            </div>`;
+          }
+          html += `</div>`;
+        }
+        html += `</div>`;
+      }
+      html += `</div>`;
+    }
+    return html;
+  }
+
+  async function renderList() {
+    const all = (await DB.getAll("history")).sort((a, b) => b.createdAt - a.createdAt);
+    const listEl = document.getElementById("history-list"), monthSel = document.getElementById("filter-month");
+    const months = Array.from(new Set(all.map((r) => r.yearMonth))).sort().reverse();
+    const currentFilter = monthSel.value || "all";
+    monthSel.innerHTML = `<option value="all">전체</option>` + months.map(m => `<option value="${m}">${m}</option>`).join("");
+    monthSel.value = months.includes(currentFilter) ? currentFilter : "all";
+    const filtered = all.filter(r => monthSel.value === "all" || r.yearMonth === monthSel.value);
+
+    listEl.innerHTML = "";
+    if (filtered.length === 0) { listEl.innerHTML = `<p class="hint">저장된 기록이 없어요.</p>`; return; }
+
+    filtered.forEach((record) => {
+      const li = document.createElement("li"); li.className = "history-row";
+      li.innerHTML = `
+        <div class="history-row-top">
+          <div class="h-info">
+            <div class="h-title">${escapeHTML(record.yearMonth)} · ${escapeHTML(record.classKey)}반</div>
+            <div class="h-meta">${formatDateTime(record.createdAt)} 저장 · 학생 ${record.studentsSnapshot.length}명</div>
+          </div>
+          <div class="h-actions">
+            <button class="pill-btn small" data-act="preview" type="button">미리보기</button>
+            <button class="pill-btn small accent" data-act="restore" type="button">불러오기</button>
+            <button class="pill-btn small danger" data-act="delete" type="button">삭제</button>
+          </div>
+        </div>
+      `;
+      li.querySelector('[data-act="preview"]').addEventListener("click", () => {
+        SoundFX.click();
+        let ex = li.querySelector(".history-preview"); if (ex) { ex.remove(); return; }
+        const div = document.createElement("div"); div.className = "history-preview"; div.innerHTML = buildPreviewHTML(record);
+        li.appendChild(div); setTimeout(() => lucide.createIcons({root: div}), 0);
+      });
+      li.querySelector('[data-act="restore"]').addEventListener("click", async () => {
+        const ok = await UI.confirmDialog(`"${record.classKey}" ${record.yearMonth} 기록을 불러올까요? 현재 학생 명단과 배치가 이 기록으로 대체돼요.`, "기록 불러오기");
+        if (!ok) return;
+        App.state.grade = record.grade; App.state.classNum = record.classNum;
+        App.state.deskLayout = JSON.parse(JSON.stringify(record.deskLayout));
+        App.state.students = JSON.parse(JSON.stringify(record.studentsSnapshot));
+        App.state.currentSeating = { id: "current", assignment: { ...record.assignment }, revealed: Object.keys(record.assignment), hasShuffled: true };
+        await App.persistMeta(); await App.persistAllStudents();
+        Layout.render(); Seating.render(false); Students.renderList(); App.updateHeader(); App.closeModal("modal-history");
+        UI.toast("기록을 성공적으로 불러왔어요!", "success");
+      });
+      li.querySelector('[data-act="delete"]').addEventListener("click", async () => {
+        const ok = await UI.confirmDialog("이 자리 배치 기록을 삭제할까요?", "기록 삭제");
+        if (!ok) return;
+        await DB.del("history", record.id); await renderList();
+        UI.toast("기록을 삭제했어요.");
+      });
+      listEl.appendChild(li);
+    });
+  }
+
+  async function saveSwapLog({ seatIdA, seatIdB, studentA, studentB, reason }) {
+    await DB.put("swapLogs", {
+      id: uuid(), classKey: classKeyOf(App.state.grade, App.state.classNum), createdAt: Date.now(),
+      seatIdA, seatIdB, nameA: studentA ? studentA.name : "빈자리", nameB: studentB ? studentB.name : "빈자리", reason: (reason || "").trim()
+    });
+    if (App.state.serverConfig && App.state.serverConfig.autoSync) {
+      ServerSync.pushToServer(true);
+    }
+  }
+
+  async function renderSwapLogList() {
+    const listEl = document.getElementById("swap-log-list"); if (!listEl) return;
+    const all = (await DB.getAll("swapLogs")).sort((a, b) => b.createdAt - a.createdAt);
+    listEl.innerHTML = "";
+    if (all.length === 0) { listEl.innerHTML = `<p class="hint">아직 교환 기록이 없어요.</p>`; return; }
+    all.forEach(log => {
+      const li = document.createElement("li"); li.className = "history-row";
+      li.innerHTML = `
+        <div class="history-row-top">
+          <div class="h-info">
+            <div class="h-title">${escapeHTML(log.nameA)} ↔ ${escapeHTML(log.nameB)}</div>
+            <div class="h-meta">${formatDateTime(log.createdAt)} · 사유: ${escapeHTML(log.reason)}</div>
+          </div>
+          <div class="h-actions"><button class="pill-btn small danger" data-act="delete" type="button">삭제</button></div>
+        </div>`;
+      li.querySelector('[data-act="delete"]').addEventListener("click", async () => {
+        const ok = await UI.confirmDialog("이 교환 사유 기록을 삭제할까요?", "교환 기록 삭제");
+        if (ok) { await DB.del("swapLogs", log.id); renderSwapLogList(); UI.toast("교환 기록을 삭제했어요."); }
+      });
+      listEl.appendChild(li);
+    });
+  }
+
+  function bindEvents() { document.getElementById("filter-month").addEventListener("change", renderList); }
+  return { saveCurrentAsHistory, renderList, bindEvents, saveSwapLog, renderSwapLogList };
+})();
+
+const Students = (() => {
+  function makeStudent(name, gender = "F", role = "none") {
+    return { id: uuid(), name: name.trim(), gender, photo: null, role, order: App.state.students.length };
+  }
+
+  async function syncAndRefresh() {
+    await App.persistAllStudents();
+    renderList();
+    App.updateHeader();
+    Seating.renderCurrentAssignments();
+  }
+
+  async function add(name, gender) {
+    if (!name || !name.trim()) return;
+    SoundFX.click();
+    App.state.students.push(makeStudent(name, gender));
+    await syncAndRefresh();
+  }
+
+  async function remove(id) {
+    SoundFX.click();
+    App.state.students = App.state.students.filter(s => s.id !== id);
+    if (App.state.currentSeating && App.state.currentSeating.assignment) {
+      Object.keys(App.state.currentSeating.assignment).forEach(seatId => {
+        if (App.state.currentSeating.assignment[seatId] === id) {
+          App.state.currentSeating.assignment[seatId] = null;
+        }
+      });
+      if (App.state.currentSeating.pinnedStudentIds) {
+        App.state.currentSeating.pinnedStudentIds = App.state.currentSeating.pinnedStudentIds.filter(sid => sid !== id);
+      }
+      Seating.persist();
+    }
+    await syncAndRefresh();
+  }
+
+  async function update(id, patch) {
+    const s = App.state.students.find(s => s.id === id);
+    if (s) Object.assign(s, patch);
+    await syncAndRefresh();
+  }
+
+  async function clearAll() {
+    if (App.state.students.length === 0) return;
+    const ok = await UI.confirmDialog("등록된 학생 명단을 모두 삭제할까요?", "학생 전체 삭제");
+    if (!ok) return;
+    App.state.students = [];
+    if (App.state.currentSeating) {
+      Object.keys(App.state.currentSeating.assignment).forEach(k => App.state.currentSeating.assignment[k] = null);
+      App.state.currentSeating.revealed = [];
+      App.state.currentSeating.pinnedStudentIds = [];
+      App.state.currentSeating.hasShuffled = false;
+      Seating.persist();
+    }
+    await syncAndRefresh();
+    UI.toast("학생 명단을 모두 비웠어요.");
+  }
+
+  async function loadSampleStudents() {
+    if (App.state.students.length > 0) {
+      const ok = await UI.confirmDialog("현재 명단을 샘플 학급(24명)으로 교체할까요?", "샘플 학급 불러오기");
+      if (!ok) return;
+    }
+    const sample = [
+      ["강민준", "M", "president"], ["김서연", "F", "vice"], ["김도윤", "M", "none"], ["김하은", "F", "none"],
+      ["박시우", "M", "none"], ["박지민", "F", "none"], ["백서준", "M", "none"], ["서하윤", "F", "none"],
+      ["송예준", "M", "none"], ["신지우", "F", "none"], ["안주원", "M", "none"], ["양수아", "F", "none"],
+      ["오지호", "M", "none"], ["윤소율", "F", "none"], ["이준우", "M", "none"], ["이지아", "F", "none"],
+      ["임현우", "M", "none"], ["장서아", "F", "none"], ["정건우", "M", "none"], ["정다은", "F", "none"],
+      ["조우진", "M", "none"], ["최유나", "F", "none"], ["한선우", "M", "none"], ["홍채원", "F", "none"]
+    ];
+    if (!App.state.grade) App.state.grade = "5";
+    if (!App.state.classNum) App.state.classNum = "2";
+    if (!App.state.teacher) App.state.teacher = "김선생";
+    App.state.students = sample.map(([n, g, r], idx) => ({ id: uuid(), name: n, gender: g, photo: null, role: r, order: idx }));
+    await App.persistMeta();
+    await syncAndRefresh();
+    Seating.shuffleAssign();
+    UI.toast("샘플 학급 24명을 불러오고 자리를 배치했어요! 🎉", "success");
+  }
+
+  function setRoleExclusive(id, role) {
+    App.state.students.forEach(s => { if (role !== "none" && s.role === role) s.role = "none"; });
+    const s = App.state.students.find(s => s.id === id); if (s) s.role = role;
+  }
+
+  function importFromExcel(file) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result), wb = XLSX.read(data, { type: "array" });
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+        let added = 0;
+        rows.forEach(row => {
+          if (!row || !row[0]) return; const name = String(row[0]).trim();
+          if (!name || name === "이름" || name.toLowerCase() === "name") return;
+          const rawG = row[1] ? String(row[1]).trim().toUpperCase() : "F";
+          const gender = (rawG.startsWith("M") || rawG.startsWith("남")) ? "M" : "F";
+          App.state.students.push(makeStudent(name, gender)); added++;
+        });
+        await syncAndRefresh();
+        UI.toast(`엑셀에서 ${added}명을 추가했어요!`, "success");
+      } catch (err) { UI.toast("엑셀 파일을 읽는 중 오류가 발생했어요.", "warn"); }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function renderList() {
+    const ul = document.getElementById("student-list"); if (!ul) return;
+    ul.innerHTML = "";
+    const countSpan = document.getElementById("settings-student-count");
+    if (countSpan) countSpan.textContent = App.state.students.length;
+
+    App.state.students.forEach((s, idx) => {
+      const li = document.createElement("li"); li.className = "student-row";
+      li.innerHTML = `
+        <span class="s-num">${idx + 1}</span>
+        ${s.photo ? `<img class="mini-photo" src="${s.photo}" alt=""/>` : `<div class="mini-photo-placeholder ${s.gender === "M" ? "male" : ""}">${s.gender === "M" ? "남" : "여"}</div>`}
+        <span class="s-name">${escapeHTML(s.name)}</span>
+        <span class="s-role">${s.role === 'president' ? '<i data-lucide="crown" class="w-3 h-3 inline"></i> 반장' : s.role === 'vice' ? '<i data-lucide="award" class="w-3 h-3 inline"></i> 부반장' : ''}</span>
+        <button data-act="edit" type="button" title="정보 수정"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+        <button data-act="remove" type="button" title="삭제"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+      `;
+      li.querySelector('[data-act="edit"]').addEventListener("click", () => openEditModal(s.id));
+      li.querySelector('[data-act="remove"]').addEventListener("click", () => remove(s.id));
+      ul.appendChild(li);
+    });
+    setTimeout(() => lucide.createIcons({root: ul}), 0);
+  }
+
+  let editingId = null;
+  function openEditModal(id) {
+    editingId = id; const s = App.state.students.find(s => s.id === id); if (!s) return;
+    document.getElementById("student-edit-name").textContent = `${s.name} 정보 수정`;
+    document.getElementById("student-edit-name-input").value = s.name;
+    document.getElementById("student-edit-gender-input").value = s.gender || "F";
+    const preview = document.getElementById("student-edit-photo-preview");
+    const placeholder = document.getElementById("student-edit-photo-placeholder");
+    const removePhotoBtn = document.getElementById("btn-student-photo-remove");
+    delete preview.dataset.pending;
+    delete preview.dataset.removed;
+    if (s.photo) {
+      preview.src = s.photo; preview.hidden = false; placeholder.hidden = true; removePhotoBtn.hidden = false;
+    } else {
+      preview.hidden = true; placeholder.hidden = false; removePhotoBtn.hidden = true;
+    }
+    document.getElementById("role-none").checked = s.role === "none";
+    document.getElementById("role-president").checked = s.role === "president";
+    document.getElementById("role-vice").checked = s.role === "vice";
+    App.openModal("modal-student-edit");
+  }
+
+  function bindEditModalEvents() {
+    const preview = document.getElementById("student-edit-photo-preview");
+    const placeholder = document.getElementById("student-edit-photo-placeholder");
+    const removePhotoBtn = document.getElementById("btn-student-photo-remove");
+
+    document.getElementById("student-edit-photo-input").addEventListener("change", async (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      const base64 = await fileToResizedBase64(file, 200);
+      preview.src = base64; preview.hidden = false; placeholder.hidden = true; removePhotoBtn.hidden = false;
+      preview.dataset.pending = base64; delete preview.dataset.removed;
+      e.target.value = "";
+    });
+    removePhotoBtn.addEventListener("click", () => {
+      SoundFX.click();
+      preview.src = ""; preview.hidden = true; placeholder.hidden = false; removePhotoBtn.hidden = true;
+      delete preview.dataset.pending; preview.dataset.removed = "1";
+    });
+    document.getElementById("btn-student-edit-save").addEventListener("click", async () => {
+      if (!editingId) return;
+      const newName = document.getElementById("student-edit-name-input").value.trim();
+      const newGender = document.getElementById("student-edit-gender-input").value;
+      const role = document.querySelector('input[name="role"]:checked')?.value || "none";
+      const patch = { role, gender: newGender };
+      if (newName) patch.name = newName;
+      if (preview.dataset.pending) { patch.photo = preview.dataset.pending; delete preview.dataset.pending; }
+      else if (preview.dataset.removed) { patch.photo = null; delete preview.dataset.removed; }
+      if (role !== "none") setRoleExclusive(editingId, role);
+      await update(editingId, patch);
+      App.closeModal("modal-student-edit");
+      UI.toast("학생 정보를 수정했어요.", "success");
+    });
+  }
+
+  function downloadExcelTemplate() {
+    SoundFX.click();
+    if (typeof XLSX === "undefined") { UI.toast("엑셀 라이브러리를 불러오지 못했어요.", "warn"); return; }
+    const ws = XLSX.utils.aoa_to_sheet([["이름", "성별"], ["김하늘", "F"], ["이바다", "M"]]);
+    ws["!cols"] = [{ wch: 14 }, { wch: 8 }];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "학생명단");
+    XLSX.writeFile(wb, "자리바꾸기_양식.xlsx");
+  }
+
+  return { add, remove, update, clearAll, loadSampleStudents, importFromExcel, downloadExcelTemplate, renderList, bindEditModalEvents };
+})();
+
+const Print = (() => {
+  function studentById(id) { return App.state.students.find((s) => s.id === id) || null; }
+  function headerHTML(title) {
+    const d = new Date(), dateStr = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+    return `<div style="text-align:center; margin-bottom:22px; font-family:'Jua', sans-serif;">
+        <h1 style="font-size:28px; margin:0;">${escapeHTML(App.state.grade || "?")}학년 ${escapeHTML(App.state.classNum || "?")}반 ${escapeHTML(title)}</h1>
+        <p style="font-size:13px; color:#666; margin:6px 0 0;">담임: ${escapeHTML(App.state.teacher || "-")} · ${dateStr}</p>
+      </div>`;
+  }
+  function leadersFooterHTML() {
+    const pres = App.state.students.find((s) => s.role === "president"), vice = App.state.students.find((s) => s.role === "vice");
+    if (!pres && !vice) return "";
+    return `<div style="text-align:center; margin-top:24px; font-size:15px;">
+        ${pres ? `반장: <b>${escapeHTML(pres.name)}</b>` : ""} ${pres && vice ? "&nbsp;&nbsp;·&nbsp;&nbsp;" : ""} ${vice ? `부반장: <b>${escapeHTML(vice.name)}</b>` : ""}
+      </div>`;
+  }
+  function seatMapHTML(withPhoto, podiumAtBottom) {
+    const dl = App.state.deskLayout;
+    if (dl.mode === "free") return freeSeatMapHTML(withPhoto, podiumAtBottom);
+    const { sections, rows, seatsPerDesk } = dl; const assignment = (App.state.currentSeating && App.state.currentSeating.assignment) || {};
+    const podiumHTML = `<div style="display:flex; justify-content:center; margin:${podiumAtBottom ? "20px 0 0" : "0 0 20px"};"><div style="border:2px solid #333; border-radius:14px; padding:10px 50px; font-family:'Jua',sans-serif; font-size:18px; letter-spacing:8px;">교 탁</div></div>`;
+    const rowOrder = Array.from({length: rows}, (_, i) => i); if (podiumAtBottom) rowOrder.reverse();
+    const secOrder = Array.from({length: sections}, (_, i) => i); if (podiumAtBottom) secOrder.reverse();
+    const pOrder = Array.from({length: seatsPerDesk}, (_, i) => i); if (podiumAtBottom) pOrder.reverse();
+
+    let gridHTML = `<div style="display:flex; gap:22px; justify-content:center; flex-wrap:wrap;">`;
+    secOrder.forEach((sec) => {
+      gridHTML += `<div style="display:flex; flex-direction:column; gap:10px;">`;
+      rowOrder.forEach((r) => {
+        gridHTML += `<div style="display:flex; gap:8px;">`;
+        pOrder.forEach((p) => {
+          const sid = assignment[`sec${sec}-row${r}-p${p}`], student = sid ? studentById(sid) : null;
+          const idx = student ? App.state.students.findIndex((s) => s.id === student.id) + 1 : "";
+          const icon = student && student.role === "president" ? `👑` : student && student.role === "vice" ? `🏅` : "";
+          gridHTML += `<div style="width:102px; min-height:82px; border:1.5px solid #666; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:5px; position:relative; page-break-inside:avoid;">
+              <span style="position:absolute; top:2px; left:4px; font-size:11px;">${icon}</span>
+              ${App.state.showNumber && student ? `<span style="position:absolute; top:2px; right:5px; font-size:10px; color:#666;">${idx}</span>` : ""}
+              ${withPhoto && student && student.photo ? `<img src="${student.photo}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;margin-bottom:3px;" />` : ""}
+              <span style="font-size:15px; font-weight:700;">${student ? escapeHTML(student.name) : ""}</span>
+            </div>`;
+        });
+        gridHTML += `</div>`;
+      });
+      gridHTML += `</div>`;
+    });
+    gridHTML += `</div>`;
+    return podiumAtBottom ? gridHTML + podiumHTML : podiumHTML + gridHTML;
+  }
+  function freeSeatMapHTML(withPhoto, podiumAtBottom) {
+    const dl = App.state.deskLayout, assignment = (App.state.currentSeating && App.state.currentSeating.assignment) || {};
+    const podiumHTML = `<div style="display:flex; justify-content:center; margin:${podiumAtBottom ? "16px 0 0" : "0 0 16px"};"><div style="border:2px solid #333; border-radius:14px; padding:10px 50px; font-family:'Jua',sans-serif; font-size:18px; letter-spacing:8px;">교 탁</div></div>`;
+    let canvasHTML = `<div style="position:relative; width:100%; max-width:680px; height:500px; margin:0 auto; border:1px dashed #999; border-radius:14px;">`;
+    dl.freeDesks.forEach((desk) => {
+      const sid = assignment[desk.id], student = sid ? studentById(sid) : null;
+      const idx = student ? App.state.students.findIndex((s) => s.id === student.id) + 1 : "";
+      const left = podiumAtBottom ? Math.max(0, 88 - desk.x) : desk.x;
+      const top = podiumAtBottom ? Math.max(0, 86 - desk.y) : desk.y;
+      const icon = student && student.role === "president" ? `👑` : student && student.role === "vice" ? `🏅` : "";
+      canvasHTML += `<div style="position:absolute; left:${left}%; top:${top}%; width:84px; min-height:66px; border:1.5px solid #666; border-radius:10px; background:white; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px;">
+          <span style="position:absolute; top:2px; left:4px; font-size:11px;">${icon}</span>
+          ${App.state.showNumber && student ? `<span style="position:absolute; top:2px; right:4px; font-size:9px; color:#666;">${idx}</span>` : ""}
+          ${withPhoto && student && student.photo ? `<img src="${student.photo}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;margin-bottom:3px;" />` : ""}
+          <span style="font-size:13.5px; font-weight:700;">${student ? escapeHTML(student.name) : ""}</span>
+        </div>`;
+    });
+    canvasHTML += `</div>`;
+    return podiumAtBottom ? canvasHTML + podiumHTML : podiumHTML + canvasHTML;
+  }
+  function doPrint(innerHTML) {
+    SoundFX.click();
+    const area = document.getElementById("print-area"); area.innerHTML = innerHTML;
+    setTimeout(() => window.print(), 100);
+  }
+  return {
+    printBoard: () => {
+      if (!App.state.currentSeating || !App.state.currentSeating.hasShuffled) { UI.toast("먼저 자리 배치를 진행해주세요.", "warn"); return; }
+      doPrint(headerHTML("자리 배치표 (게시용)") + seatMapHTML(App.state.showPhoto, false) + leadersFooterHTML());
+    },
+    printTeacher: () => {
+      if (!App.state.currentSeating || !App.state.currentSeating.hasShuffled) { UI.toast("먼저 자리 배치를 진행해주세요.", "warn"); return; }
+      doPrint(headerHTML("자리 배치표 (교탁용)") + seatMapHTML(App.state.showPhoto, true) + leadersFooterHTML());
+    }
+  };
+})();
+
+/* ================= ServerSync (REST API & Cloud Storage Sync) ================= */
+const ServerSync = (() => {
+  let syncStatus = "local"; // "local" | "online" | "syncing" | "error"
+
+  function resolveEndpoint() {
+    const cfg = App.state.serverConfig || {};
+    let base = (cfg.url || "").trim();
+    if (!base) {
+      if (location.protocol === "http:" || location.protocol === "https:") {
+        base = `${location.origin}/api/sync`;
+      } else {
+        return null;
+      }
+    }
+    const room = encodeURIComponent((cfg.roomKey || classKeyOf(App.state.grade, App.state.classNum) || "default").trim());
+    if (base.includes("?")) return `${base}&room=${room}`;
+    return `${base.replace(/\/+$/, "")}/${room}`;
+  }
+
+  function buildHeaders() {
+    const headers = { "Content-Type": "application/json" };
+    const token = (App.state.serverConfig?.authToken || "").trim();
+    if (token) {
+      headers["Authorization"] = token.startsWith("Bearer ") ? token : `Bearer ${token}`;
+      headers["X-API-Key"] = token;
+    }
+    return headers;
+  }
+
+  function readConfigFromInputs() {
+    const urlEl = document.getElementById("input-server-url");
+    const roomEl = document.getElementById("input-sync-room");
+    const tokenEl = document.getElementById("input-sync-token");
+    const autoEl = document.getElementById("chk-auto-sync");
+    if (!urlEl) return;
+    App.state.serverConfig = {
+      ...App.state.serverConfig,
+      url: urlEl.value.trim(),
+      roomKey: roomEl.value.trim() || classKeyOf(App.state.grade, App.state.classNum) || "default-class",
+      authToken: tokenEl.value.trim(),
+      autoSync: !!autoEl.checked,
+    };
+  }
+
+  function updateStatusUI(customState) {
+    if (customState) syncStatus = customState;
+    const dot = document.getElementById("sync-dot");
+    const text = document.getElementById("sync-status-text");
+    const info = document.getElementById("server-sync-last-info");
+    const cfg = App.state.serverConfig || {};
+
+    if (dot && text) {
+      dot.className = "sync-dot";
+      if (syncStatus === "syncing") {
+        dot.classList.add("syncing");
+        text.textContent = "서버 동기화 중...";
+      } else if (syncStatus === "online") {
+        dot.classList.add("online");
+        text.textContent = `서버 연결됨 (${cfg.roomKey || "기본"})`;
+      } else if (syncStatus === "error") {
+        dot.classList.add("error");
+        text.textContent = "서버 오프라인 (로컬 보관)";
+      } else {
+        text.textContent = cfg.url ? `서버 대기 (${cfg.roomKey || "기본"})` : "로컬 저장";
+      }
+    }
+    if (info && cfg.lastSyncedAt) {
+      info.innerHTML = `마지막 서버 동기화: <b>${formatDateTime(cfg.lastSyncedAt)}</b> · 방 코드: <b>${escapeHTML(cfg.roomKey)}</b>`;
+    }
+  }
+
+  async function buildFullPayload() {
+    const [meta, students, history, swapLogs, currentSeating] = await Promise.all([
+      DB.get("meta", "settings"), DB.getAll("students"), DB.getAll("history"), DB.getAll("swapLogs"), DB.get("currentSeating", "current")
+    ]);
+    return {
+      version: 2,
+      roomKey: App.state.serverConfig.roomKey || classKeyOf(App.state.grade, App.state.classNum),
+      updatedAt: Date.now(),
+      meta, students, history, swapLogs, currentSeating
+    };
+  }
+
+  async function testConnection() {
+    readConfigFromInputs();
+    await App.persistMeta();
+    const endpoint = resolveEndpoint();
+    if (!endpoint) {
+      UI.toast("서버 API 주소를 입력해주세요.", "warn");
+      return;
+    }
+    updateStatusUI("syncing");
+    try {
+      const res = await fetch(endpoint, { method: "GET", headers: buildHeaders() });
+      if (res.ok || res.status === 404) {
+        updateStatusUI("online");
+        UI.toast("서버와 정상적으로 연결되었어요! ☁️", "success");
+      } else {
+        throw new Error(`HTTP ${res.status}`);
+      }
+    } catch (err) {
+      updateStatusUI("error");
+      UI.toast("서버에 연결할 수 없어요. 서버 실행 여부나 주소를 확인해주세요.", "warn");
+    }
+  }
+
+  async function pushToServer(silent = false) {
+    if (!silent) {
+      readConfigFromInputs();
+      await App.persistMeta();
+    }
+    const endpoint = resolveEndpoint();
+    if (!endpoint) {
+      if (!silent) UI.toast("설정에서 서버 주소를 먼저 입력해주세요.", "warn");
+      return false;
+    }
+    updateStatusUI("syncing");
+    try {
+      const payload = await buildFullPayload();
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: buildHeaders(),
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      App.state.serverConfig.lastSyncedAt = Date.now();
+      await App.persistMeta();
+      updateStatusUI("online");
+      if (!silent) UI.toast("학급 명단과 배치 기록을 서버에 저장했어요! ☁️", "success");
+      return true;
+    } catch (err) {
+      updateStatusUI("error");
+      if (!silent) UI.toast("서버 저장 실패: 로컬 기기에는 안전하게 저장되어 있어요.", "warn");
+      return false;
+    }
+  }
+
+  async function pullFromServer() {
+    readConfigFromInputs();
+    await App.persistMeta();
+    const endpoint = resolveEndpoint();
+    if (!endpoint) {
+      UI.toast("설정에서 서버 주소를 먼저 입력해주세요.", "warn");
+      return;
+    }
+    updateStatusUI("syncing");
+    try {
+      const res = await fetch(endpoint, { method: "GET", headers: buildHeaders() });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const payload = data.record || data.data || data;
+      if (!payload || (!Array.isArray(payload.students) && !Array.isArray(payload.history))) {
+        UI.toast("서버에 아직 저장된 학급 기록이 없어요.", "warn");
+        updateStatusUI("online");
+        return;
+      }
+      const ok = await UI.confirmDialog(
+        `서버의 "${App.state.serverConfig.roomKey}" 학급 데이터(학생 ${(payload.students || []).length}명, 기록 ${(payload.history || []).length}건)를 불러올까요?`,
+        "서버에서 불러오기"
+      );
+      if (!ok) { updateStatusUI("online"); return; }
+
+      const keepServerCfg = { ...App.state.serverConfig, lastSyncedAt: Date.now() };
+      if (payload.meta) {
+        payload.meta.serverConfig = keepServerCfg;
+        await DB.put("meta", payload.meta);
+      }
+      if (Array.isArray(payload.students)) {
+        await DB.clear("students");
+        for (const s of payload.students) await DB.put("students", s);
+      }
+      if (Array.isArray(payload.history)) {
+        await DB.clear("history");
+        for (const h of payload.history) await DB.put("history", h);
+      }
+      if (Array.isArray(payload.swapLogs)) {
+        await DB.clear("swapLogs");
+        for (const l of payload.swapLogs) await DB.put("swapLogs", l);
+      }
+      if (payload.currentSeating) {
+        await DB.put("currentSeating", payload.currentSeating);
+      }
+      await App.init();
+      await History.renderList();
+      await History.renderSwapLogList();
+      updateStatusUI("online");
+      UI.toast("서버에서 최신 기록을 불러왔어요! 🎉", "success");
+    } catch (err) {
+      updateStatusUI("error");
+      UI.toast("서버에서 데이터를 가져오지 못했어요. 서버 연결을 확인해주세요.", "warn");
+    }
+  }
+
+  function bindEvents() {
+    document.getElementById("btn-sync-badge")?.addEventListener("click", () => {
+      document.getElementById("btn-open-settings").click();
+    });
+    document.getElementById("btn-server-test")?.addEventListener("click", testConnection);
+    document.getElementById("btn-server-push")?.addEventListener("click", () => pushToServer(false));
+    document.getElementById("btn-server-pull")?.addEventListener("click", pullFromServer);
+    document.getElementById("btn-history-cloud-push")?.addEventListener("click", () => pushToServer(false));
+    document.getElementById("btn-history-cloud-pull")?.addEventListener("click", pullFromServer);
+  }
+
+  return { readConfigFromInputs, updateStatusUI, pushToServer, pullFromServer, testConnection, bindEvents };
+})();
+
+/* ================= PWAManager (Manifest, Service Worker & Install Prompt) ================= */
+const PWAManager = (() => {
+  let deferredPrompt = null;
+
+  function generateAppIconDataURL(size = 192) {
+    const canvas = document.createElement("canvas");
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    const grad = ctx.createLinearGradient(0, 0, size, size);
+    grad.addColorStop(0, "#5B7CFA");
+    grad.addColorStop(1, "#3EB886");
+    ctx.fillStyle = grad;
+    const r = size * 0.22;
+    ctx.beginPath();
+    ctx.moveTo(r, 0); ctx.lineTo(size - r, 0); ctx.quadraticCurveTo(size, 0, size, r);
+    ctx.lineTo(size, size - r); ctx.quadraticCurveTo(size, size, size - r, size);
+    ctx.lineTo(r, size); ctx.quadraticCurveTo(0, size, 0, size - r);
+    ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    const pad = size * 0.2;
+    const box = size * 0.26;
+    const gap = size * 0.08;
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 2; col++) {
+        const x = pad + col * (box + gap);
+        const y = pad + row * (box + gap);
+        ctx.fillRect(x, y, box, box * 0.82);
+      }
+    }
+    return canvas.toDataURL("image/png");
+  }
+
+  function injectManifestAndIcons() {
+    try {
+      const icon192 = generateAppIconDataURL(192);
+      const icon512 = generateAppIconDataURL(512);
+
+      const appleIcon = document.createElement("link");
+      appleIcon.rel = "apple-touch-icon";
+      appleIcon.href = icon192;
+      document.head.appendChild(appleIcon);
+
+      const fav = document.createElement("link");
+      fav.rel = "icon";
+      fav.type = "image/png";
+      fav.href = icon192;
+      document.head.appendChild(fav);
+
+      // If served from a real server with /manifest.json, link it; otherwise build a Blob manifest
+      const manifestLink = document.createElement("link");
+      manifestLink.rel = "manifest";
+      const manifestObj = {
+        name: "우리반 자리바꾸기",
+        short_name: "자리바꾸기",
+        description: "학급 자리 배치, 기록 관리 및 클라우드 동기화 웹앱",
+        start_url: location.href.split("#")[0],
+        display: "standalone",
+        background_color: "#BFE6FB",
+        theme_color: "#5B7CFA",
+        orientation: "any",
+        icons: [
+          { src: icon192, sizes: "192x192", type: "image/png", purpose: "any maskable" },
+          { src: icon512, sizes: "512x512", type: "image/png", purpose: "any maskable" }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifestObj)], { type: "application/manifest+json" });
+      manifestLink.href = URL.createObjectURL(blob);
+      document.head.appendChild(manifestLink);
+    } catch (e) {}
+  }
+
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") return;
+
+    // First try /sw.js (when hosted with the bundled server package), fallback to inline Blob SW
+    navigator.serviceWorker.register("./sw.js").catch(() => {
+      try {
+        const swCode = `
+          const CACHE_NAME = 'seat-shuffle-v2';
+          self.addEventListener('install', (e) => self.skipWaiting());
+          self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+          self.addEventListener('fetch', (e) => {
+            if (e.request.method !== 'GET' || e.request.url.includes('/api/')) return;
+            e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+          });
+        `;
+        const blob = new Blob([swCode], { type: "application/javascript" });
+        navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+      } catch (err) {}
+    });
+  }
+
+  function bindInstallEvents() {
+    const btn = document.getElementById("btn-pwa-install");
+    const label = document.getElementById("pwa-install-label");
+    if (!btn) return;
+
+    if (window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true) {
+      btn.style.display = "none";
+    }
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      btn.style.display = "inline-flex";
+      if (label) label.textContent = "앱 설치";
+    });
+
+    window.addEventListener("appinstalled", () => {
+      deferredPrompt = null;
+      btn.style.display = "none";
+      UI.toast("자리바꾸기 앱이 설치되었어요! 🎉", "success");
+    });
+
+    btn.addEventListener("click", async () => {
+      SoundFX.click();
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === "accepted") {
+          deferredPrompt = null;
+        }
+      } else {
+        App.openModal("modal-pwa-guide");
+      }
+    });
+  }
+
+  function init() {
+    injectManifestAndIcons();
+    registerServiceWorker();
+    bindInstallEvents();
+  }
+
+  return { init };
+})();
+
+document.addEventListener("DOMContentLoaded", () => {
+  App.bindGlobalEvents();
+  ServerSync.bindEvents();
+  PWAManager.init();
+  App.init().then(() => ServerSync.updateStatusUI()).catch(err => console.error(err));
+});
+</script>
+</body>
+</html>
